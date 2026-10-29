@@ -61,7 +61,7 @@ cp .env.example .env
 ```
 Add your Neon connection string to `.env`:
 ```env
-DATABASE_URL=postgresql://neondb_owner:your_password@ep-something.us-east-2.aws.neon.tech/neondb?sslmode=require
+DATABASE_URL=postgresql://neondb_owner:your_password@ep-something.us-east-2.aws.neon.tech/neondb?sslmode=verify-full
 ```
 
 ### 3. (Optional) Migrate Existing SQLite Data

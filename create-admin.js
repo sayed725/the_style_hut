@@ -24,6 +24,10 @@ if (!connectionString) {
   process.exit(1);
 }
 
+if (connectionString.includes('sslmode=require') && !connectionString.includes('uselibpqcompat')) {
+  connectionString = connectionString.replace('sslmode=require', 'sslmode=verify-full');
+}
+
 const pool = new Pool({
   connectionString,
   ssl: connectionString.includes('neon.tech') ? { rejectUnauthorized: false } : undefined,

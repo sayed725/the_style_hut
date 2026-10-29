@@ -18,10 +18,10 @@ export default function SellPage() {
   const [loading, setLoading] = React.useState(true);
 
   const fetchProducts = () => {
-    fetch('/api/products')
+    fetch('/api/products?all=1')
       .then((res) => res.json())
       .then((data) => {
-        setProducts(Array.isArray(data) ? data : []);
+        setProducts(Array.isArray(data) ? data : data?.products || []);
         setLoading(false);
       })
       .catch(() => setLoading(false));
@@ -163,12 +163,24 @@ export default function SellPage() {
                 </div>
 
                 <div className="mt-4 pt-2.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                  <span className="text-base font-extrabold text-teal-800 dark:text-teal-300 font-mono">
-                    {money(p.selling_price)}
-                  </span>
-                  <span className="text-[11px] font-bold text-slate-400 group-hover:text-teal-700 dark:group-hover:text-teal-400 uppercase tracking-wider flex items-center gap-1 transition-colors">
+                  {p.selling_price > 0 ? (
+                    <div>
+                      <span className="text-[10px] uppercase font-semibold text-slate-400 block">Price</span>
+                      <span className="text-base font-extrabold text-teal-800 dark:text-teal-300 font-mono">
+                        {money(p.selling_price)}
+                      </span>
+                    </div>
+                  ) : (
+                    <div>
+                      <span className="text-[10px] uppercase font-semibold text-slate-400 block">Cost Price</span>
+                      <span className="text-sm font-bold text-slate-700 dark:text-slate-300 font-mono">
+                        {money(p.purchase_price)}
+                      </span>
+                    </div>
+                  )}
+                  <span className="text-[11px] font-bold text-teal-700 dark:text-teal-400 group-hover:bg-teal-50 dark:group-hover:bg-teal-950/50 px-2 py-1 rounded-md uppercase tracking-wider flex items-center gap-1 transition-colors">
                     <Tag className="h-3 w-3" />
-                    Sell Now
+                    {p.selling_price > 0 ? 'Sell Now' : 'Set Price & Sell'}
                   </span>
                 </div>
               </Card>

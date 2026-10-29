@@ -222,12 +222,22 @@ export default function DashboardPage() {
               <span className="font-bold text-slate-900 dark:text-white">{money(inv.cost_value)}</span>
             </div>
             <div className="flex justify-between py-1.5 border-b border-slate-100 dark:border-slate-800">
-              <span className="text-slate-500">Retail Worth (List Price)</span>
-              <span className="font-bold text-slate-900 dark:text-white">{money(inv.retail_value)}</span>
+              <span className="text-slate-500">Retail Worth</span>
+              {Number(inv.retail_value) > 0 ? (
+                <span className="font-bold text-slate-900 dark:text-white">{money(inv.retail_value)}</span>
+              ) : (
+                <span className="text-xs text-slate-400 font-medium italic">Decided at sale</span>
+              )}
             </div>
             <div className="flex justify-between py-1.5">
-              <span className="text-slate-500">Potential Profit in Inventory</span>
-              <span className="font-extrabold text-emerald-600 dark:text-emerald-400">{money((inv.retail_value || 0) - (inv.cost_value || 0))}</span>
+              <span className="text-slate-500">Expected Profit in Stock</span>
+              {Number(inv.retail_value) > 0 ? (
+                <span className="font-extrabold text-emerald-600 dark:text-emerald-400">
+                  {money((inv.retail_value || 0) - (inv.cost_value || 0))}
+                </span>
+              ) : (
+                <span className="text-xs text-slate-400 font-medium italic">Calculated upon sale</span>
+              )}
             </div>
           </CardContent>
         </Card>

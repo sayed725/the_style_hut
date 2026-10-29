@@ -5,7 +5,10 @@ types.setTypeParser(1700, (val) => (val === null ? null : parseFloat(val)));
 // Parse INT8 (BIGINT) as integer numbers
 types.setTypeParser(20, (val) => (val === null ? null : parseInt(val, 10)));
 
-const connectionString = process.env.DATABASE_URL;
+let connectionString = process.env.DATABASE_URL;
+if (connectionString && connectionString.includes('sslmode=require') && !connectionString.includes('uselibpqcompat')) {
+  connectionString = connectionString.replace('sslmode=require', 'sslmode=verify-full');
+}
 
 declare global {
   // eslint-disable-next-line no-var

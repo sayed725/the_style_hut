@@ -211,7 +211,7 @@ export default function SalesHistoryPage() {
                 <th className="py-3 px-4 text-right">Qty</th>
                 <th className="py-3 px-4 text-right">Unit Price</th>
                 <th className="py-3 px-4 text-right">Revenue</th>
-                <th className="py-3 px-4 text-right">Net Profit</th>
+                <th className="py-3 px-4 text-right">Profit / Loss</th>
                 <th className="py-3 px-4 text-right">Action</th>
               </tr>
             </thead>
@@ -325,7 +325,7 @@ export default function SalesHistoryPage() {
                   </span>
                 </div>
                 <div>
-                  <span className="text-slate-400 block text-[10px] uppercase font-semibold">Profit</span>
+                  <span className="text-slate-400 block text-[10px] uppercase font-semibold">{s.profit < 0 ? 'Loss' : 'Profit'}</span>
                   <span className={`font-bold font-mono ${profitClass(s.profit)}`}>
                     {money(s.profit)}
                   </span>

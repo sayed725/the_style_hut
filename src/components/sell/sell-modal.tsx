@@ -26,7 +26,7 @@ interface SellModalProps {
 
 export function SellModal({ product, open, onOpenChange, onSuccess }: SellModalProps) {
   const [quantity, setQuantity] = React.useState<number>(1);
-  const [unitPrice, setUnitPrice] = React.useState<number>(0);
+  const [unitPrice, setUnitPrice] = React.useState<number | string>('');
   const [soldDate, setSoldDate] = React.useState<string>('');
   const [note, setNote] = React.useState<string>('');
   const [loading, setLoading] = React.useState(false);
@@ -35,7 +35,7 @@ export function SellModal({ product, open, onOpenChange, onSuccess }: SellModalP
   React.useEffect(() => {
     if (product) {
       setQuantity(1);
-      setUnitPrice(product.selling_price || 0);
+      setUnitPrice(product.selling_price && product.selling_price > 0 ? product.selling_price : '');
       setSoldDate('');
       setNote('');
       setError('');
@@ -44,11 +44,19 @@ export function SellModal({ product, open, onOpenChange, onSuccess }: SellModalP
 
   if (!product) return null;
 
-  const totalRevenue = quantity * unitPrice;
-  const totalProfit = quantity * (unitPrice - product.purchase_price);
+  const numPrice = typeof unitPrice === 'number' ? unitPrice : parseFloat(String(unitPrice)) || 0;
+  const totalRevenue = quantity * numPrice;
+  const totalCost = quantity * product.purchase_price;
+  const totalProfit = totalRevenue - totalCost;
+  const isProfit = totalProfit > 0;
+  const isLoss = totalProfit < 0;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (numPrice < 0) {
+      setError('Selling price cannot be negative');
+      return;
+    }
     setError('');
     setLoading(true);
 
@@ -59,7 +67,7 @@ export function SellModal({ product, open, onOpenChange, onSuccess }: SellModalP
         body: JSON.stringify({
           product_id: product.id,
           quantity,
-          unit_price: unitPrice,
+          unit_price: numPrice,
           sold_date: soldDate || undefined,
           note,
         }),
@@ -68,9 +76,15 @@ export function SellModal({ product, open, onOpenChange, onSuccess }: SellModalP
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to record sale');
 
-      toast.success(`Sold ${quantity} × ${product.name}`, {
-        description: `Total: ${money(totalRevenue)} • Profit: ${money(totalProfit)}`,
-      });
+      if (isLoss) {
+        toast.warning(`Sale recorded: ${quantity} × ${product.name}`, {
+          description: `Total: ${money(totalRevenue)} • Net Loss: ${money(totalProfit)}`,
+        });
+      } else {
+        toast.success(`Sale recorded: ${quantity} × ${product.name}`, {
+          description: `Total: ${money(totalRevenue)} • Profit: ${money(totalProfit)}`,
+        });
+      }
 
       onOpenChange(false);
       onSuccess();
@@ -88,7 +102,13 @@ export function SellModal({ product, open, onOpenChange, onSuccess }: SellModalP
         <DialogHeader>
           <DialogTitle>Sell: {product.name}</DialogTitle>
           <DialogDescription>
-            {[variant(product), `${product.quantity} in stock`, `Cost ${money(product.purchase_price)}`].filter(Boolean).join(' · ')}
+            {[
+              variant(product),
+              `${product.quantity} pcs in stock`,
+              `Cost price ${money(product.purchase_price)}/pc`,
+            ]
+              .filter(Boolean)
+              .join(' · ')}
           </DialogDescription>
         </DialogHeader>
 
@@ -97,48 +117,91 @@ export function SellModal({ product, open, onOpenChange, onSuccess }: SellModalP
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs font-semibold text-slate-500 mb-1.5 block">Quantity *</label>
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 block">
+                Quantity *
+              </label>
               <Input
                 type="number"
                 min={1}
                 max={product.quantity}
                 value={quantity}
-                onChange={(e) => setQuantity(parseInt(e.target.value, 10) || 1)}
+                onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value, 10) || 1))}
                 required
               />
             </div>
             <div>
-              <label className="text-xs font-semibold text-slate-500 mb-1.5 block">Selling Price *</label>
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 block">
+                Selling Price (per piece) *
+              </label>
               <Input
                 type="number"
                 min={0}
                 step="0.01"
+                placeholder="Enter sale price..."
                 value={unitPrice}
-                onChange={(e) => setUnitPrice(parseFloat(e.target.value) || 0)}
+                onChange={(e) => setUnitPrice(e.target.value)}
                 required
+                autoFocus
               />
             </div>
           </div>
 
           <div>
-            <label className="text-xs font-semibold text-slate-500 mb-1.5 block">Date (Leave empty for today)</label>
+            <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 block">
+              Sale Date (Leave empty for today)
+            </label>
             <Input type="date" value={soldDate} onChange={(e) => setSoldDate(e.target.value)} />
           </div>
 
           <div>
-            <label className="text-xs font-semibold text-slate-500 mb-1.5 block">Note</label>
-            <Input placeholder="Optional (e.g. discount, customer)" value={note} onChange={(e) => setNote(e.target.value)} maxLength={200} />
+            <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 block">
+              Note (Optional)
+            </label>
+            <Input
+              placeholder="e.g. Customer name, discount reason"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              maxLength={200}
+            />
           </div>
 
-          {/* Live Profit Preview Box */}
-          <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-lg border border-slate-200 dark:border-slate-800 text-xs flex justify-between items-center">
-            <div>
-              <span className="text-slate-500">Total: </span>
-              <span className="font-bold text-slate-900 dark:text-white">{money(totalRevenue)}</span>
+          {/* Dynamic Profit / Loss Calculation Preview */}
+          <div
+            className={`p-3.5 rounded-xl border text-xs transition-colors ${
+              isLoss
+                ? 'bg-rose-50/70 dark:bg-rose-950/30 border-rose-200 dark:border-rose-900/60'
+                : isProfit
+                ? 'bg-emerald-50/70 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-900/60'
+                : 'bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-800'
+            }`}
+          >
+            <div className="flex items-center justify-between py-1 border-b border-slate-200/60 dark:border-slate-700/60 mb-2">
+              <span className="text-slate-500">Buying Cost ({quantity} × {money(product.purchase_price)}):</span>
+              <span className="font-semibold text-slate-700 dark:text-slate-300 font-mono">
+                {money(totalCost)}
+              </span>
             </div>
-            <div>
-              <span className="text-slate-500">Profit: </span>
-              <span className={profitClass(totalProfit)}>{money(totalProfit)}</span>
+            <div className="flex items-center justify-between py-1 border-b border-slate-200/60 dark:border-slate-700/60 mb-2">
+              <span className="text-slate-500">Total Sale Amount:</span>
+              <span className="font-bold text-slate-900 dark:text-white font-mono text-sm">
+                {money(totalRevenue)}
+              </span>
+            </div>
+            <div className="flex items-center justify-between pt-0.5">
+              <span className="font-semibold text-slate-600 dark:text-slate-400">
+                {isLoss ? 'Estimated Loss:' : isProfit ? 'Estimated Profit:' : 'Net Result:'}
+              </span>
+              <span
+                className={`font-mono font-extrabold text-sm ${
+                  isLoss
+                    ? 'text-rose-600 dark:text-rose-400'
+                    : isProfit
+                    ? 'text-emerald-600 dark:text-emerald-400'
+                    : 'text-slate-600 dark:text-slate-300'
+                }`}
+              >
+                {money(totalProfit)}
+              </span>
             </div>
           </div>
         </DialogBody>
@@ -147,8 +210,12 @@ export function SellModal({ product, open, onOpenChange, onSuccess }: SellModalP
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button type="submit" variant="primary" disabled={loading || product.quantity < quantity}>
-            {loading ? 'Recording...' : 'Record Sale'}
+          <Button
+            type="submit"
+            variant={isLoss ? 'destructive' : 'primary'}
+            disabled={loading || product.quantity < quantity || unitPrice === ''}
+          >
+            {loading ? 'Recording...' : isLoss ? 'Confirm Sale (at Loss)' : 'Record Sale'}
           </Button>
         </DialogFooter>
       </form>

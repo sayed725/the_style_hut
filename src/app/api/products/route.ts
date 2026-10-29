@@ -7,13 +7,47 @@ export async function GET(req: Request) {
   if (!user) return NextResponse.json({ error: 'Please sign in' }, { status: 401 });
 
   const { searchParams } = new URL(req.url);
-  const active = searchParams.get('archived') === '1' ? 0 : 1;
+  const isAll = searchParams.get('all') === '1';
+  const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10));
+  const limit = isAll ? 1000 : Math.max(1, Math.min(100, parseInt(searchParams.get('limit') || '10', 10)));
+  const offset = (page - 1) * limit;
+  const search = String(searchParams.get('q') || searchParams.get('search') || '').trim();
 
-  const { rows } = await query(
-    'SELECT * FROM products WHERE active = $1 ORDER BY name ASC, size, color',
-    [active]
-  );
-  return NextResponse.json(rows);
+  let countSql = `SELECT COUNT(*)::int AS total, COALESCE(SUM(quantity)::int, 0) AS total_pieces FROM products WHERE active = 1`;
+  let dataSql = `SELECT * FROM products WHERE active = 1`;
+  const params: any[] = [];
+
+  if (search) {
+    params.push(`%${search}%`);
+    const filter = ` AND (name ILIKE $1 OR sku ILIKE $1 OR category ILIKE $1 OR size ILIKE $1 OR color ILIKE $1)`;
+    countSql += filter;
+    dataSql += filter;
+  }
+
+  dataSql += ` ORDER BY id DESC`;
+
+  if (!isAll) {
+    dataSql += ` LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
+    params.push(limit, offset);
+  }
+
+  const [countRes, dataRes] = await Promise.all([
+    query(countSql, search ? [params[0]] : []),
+    query(dataSql, params),
+  ]);
+
+  const total = countRes.rows[0]?.total || 0;
+  const totalPieces = countRes.rows[0]?.total_pieces || 0;
+  const totalPages = Math.max(1, Math.ceil(total / limit));
+
+  return NextResponse.json({
+    products: dataRes.rows,
+    total,
+    totalPieces,
+    page,
+    totalPages,
+    limit,
+  });
 }
 
 export async function POST(req: Request) {
