@@ -13,7 +13,27 @@ export async function GET(req: Request) {
   const from = searchParams.get('from') || addDays(today, -29);
   const to = searchParams.get('to') || today;
   const search = String(searchParams.get('q') || '').trim().slice(0, 60);
-  const limit = Math.min(Math.max(parseInt(searchParams.get('limit') || '300', 10), 1), 5000);
+  const paymentMethod = String(searchParams.get('payment_method') || 'all').toLowerCase();
+  const sort = String(searchParams.get('sort') || 'date_desc').toLowerCase();
+  const limit = Math.min(Math.max(parseInt(searchParams.get('limit') || '500', 10), 1), 5000);
+
+  const validMethods = ['cash', 'online', 'due'];
+  const methodFilter = validMethods.includes(paymentMethod) ? paymentMethod : 'all';
+
+  let orderBy = 'sold_date DESC, id DESC';
+  if (sort === 'date_asc') {
+    orderBy = 'sold_date ASC, id ASC';
+  } else if (sort === 'revenue_desc') {
+    orderBy = 'revenue DESC, sold_date DESC, id DESC';
+  } else if (sort === 'revenue_asc') {
+    orderBy = 'revenue ASC, sold_date DESC, id DESC';
+  } else if (sort === 'profit_desc') {
+    orderBy = 'profit DESC, sold_date DESC, id DESC';
+  } else if (sort === 'profit_asc') {
+    orderBy = 'profit ASC, sold_date DESC, id DESC';
+  } else if (sort === 'payment_method') {
+    orderBy = 'payment_method ASC, sold_date DESC, id DESC';
+  }
 
   const sql = `
     SELECT *,
@@ -22,9 +42,10 @@ export async function GET(req: Request) {
     FROM sales
     WHERE sold_date BETWEEN $1 AND $2
       AND ($3 = '' OR product_name ILIKE '%' || $4 || '%')
-    ORDER BY sold_date DESC, id DESC LIMIT $5`;
+      AND ($5 = 'all' OR payment_method = $5)
+    ORDER BY ${orderBy} LIMIT $6`;
 
-  const { rows } = await query(sql, [from, to, search, search, limit]);
+  const { rows } = await query(sql, [from, to, search, search, methodFilter, limit]);
   return NextResponse.json({ from, to, rows });
 }
 
@@ -41,6 +62,8 @@ export async function POST(req: Request) {
     const today = todayStr(tz);
     const date = b.sold_date && b.sold_date <= today ? b.sold_date : today;
     const note = String(b.note || '').trim().slice(0, 200);
+    const rawMethod = String(b.payment_method || '').toLowerCase();
+    const paymentMethod = ['cash', 'online', 'due'].includes(rawMethod) ? rawMethod : 'cash';
 
     if (!productId || qtySold < 1 || isNaN(price) || price < 0) {
       return NextResponse.json({ error: 'Invalid sale details' }, { status: 400 });
@@ -62,9 +85,9 @@ export async function POST(req: Request) {
 
       const prodDisplayName = p.name + (p.size ? ` (${p.size}${p.color ? ', ' + p.color : ''})` : p.color ? ` (${p.color})` : '');
       const insert = await client.query(
-        `INSERT INTO sales (product_id, product_name, quantity, unit_cost, unit_price, sold_at, sold_date, note)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
-        [productId, prodDisplayName, qtySold, p.purchase_price, price, new Date().toISOString(), date, note]
+        `INSERT INTO sales (product_id, product_name, quantity, unit_cost, unit_price, sold_at, sold_date, note, payment_method)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
+        [productId, prodDisplayName, qtySold, p.purchase_price, price, new Date().toISOString(), date, note, paymentMethod]
       );
       saleId = insert.rows[0].id;
       await client.query('COMMIT');

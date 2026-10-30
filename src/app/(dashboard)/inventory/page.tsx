@@ -9,7 +9,7 @@ import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogBody, Dialo
 import { ProductModal } from '@/components/stock/product-modal';
 import { RestockModal } from '@/components/stock/restock-modal';
 import { SellModal } from '@/components/sell/sell-modal';
-import { money, num, pct, profitClass, variant } from '@/lib/format';
+import { money, num, variant } from '@/lib/format';
 import { Plus, Search, Package, Edit, Trash2, ShoppingCart, MoreVertical, AlertTriangle, ChevronLeft, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -44,6 +44,23 @@ export default function InventoryPage() {
     }, 250);
     return () => clearTimeout(timer);
   }, [search]);
+
+  // Memoize pagination items to prevent large array generation and handle any number of pages safely
+  const paginationItems = React.useMemo(() => {
+    if (totalPages <= 5) {
+      return Array.from({ length: totalPages }, (_, i) => i + 1);
+    }
+    const items: (number | string)[] = [1];
+    const start = Math.max(2, page - 1);
+    const end = Math.min(totalPages - 1, page + 1);
+
+    if (start > 2) items.push('...');
+    for (let i = start; i <= end; i++) items.push(i);
+    if (end < totalPages - 1) items.push('...');
+
+    items.push(totalPages);
+    return items;
+  }, [page, totalPages]);
 
   React.useEffect(() => {
     if (!activeMenu) return;
@@ -130,12 +147,12 @@ export default function InventoryPage() {
   return (
     <div className="space-y-6">
       {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
+      <div className="flex items-center justify-between gap-3 min-w-0">
+        <div className="min-w-0 flex-1">
+          <h1 className="text-xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white truncate">
             Stock Management
           </h1>
-          <p className="text-xs sm:text-sm text-slate-500 font-medium mt-0.5">
+          <p className="text-xs sm:text-sm text-slate-500 font-medium mt-0.5 truncate">
             {total} {total === 1 ? 'product' : 'products'} • {num(totalPieces)} total pieces on hand
           </p>
         </div>
@@ -145,10 +162,12 @@ export default function InventoryPage() {
             setEditingProduct(null);
             setProductModalOpen(true);
           }}
-          className="font-bold shadow-md self-start sm:self-auto"
+          className="font-bold shadow-md h-9 w-9 p-0 sm:h-10 sm:w-auto sm:px-4 shrink-0"
+          title="Add Product"
+          aria-label="Add Product"
         >
-          <Plus className="h-4 w-4 mr-1.5" />
-          Add Product
+          <Plus className="h-4 w-4 sm:mr-1.5" />
+          <span className="hidden sm:inline">Add Product</span>
         </Button>
       </div>
 
@@ -173,12 +192,9 @@ export default function InventoryPage() {
             <thead className="bg-slate-50 dark:bg-slate-800/50 text-[11px] uppercase tracking-wider text-slate-500 border-b border-slate-200 dark:border-slate-800 font-semibold select-none">
               <tr>
                 <th className="py-3 px-4">Product</th>
-                <th className="py-3 px-4">Variant</th>
-                <th className="py-3 px-4">Stock</th>
-                <th className="py-3 px-4 text-right">Cost</th>
-                <th className="py-3 px-4 text-right">Selling Price</th>
-                <th className="py-3 px-4 text-right">Margin</th>
-                <th className="py-3 px-4 text-right">Actions</th>
+                <th className="py-3 px-4 whitespace-nowrap">Stock</th>
+                <th className="py-3 px-4 text-right whitespace-nowrap">Cost</th>
+                <th className="py-3 px-4 text-right whitespace-nowrap w-16">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -190,19 +206,10 @@ export default function InventoryPage() {
                       <div className="h-3 w-20 bg-slate-100 dark:bg-slate-800/60 rounded" />
                     </td>
                     <td className="py-3.5 px-4">
-                      <div className="h-3.5 w-16 bg-slate-200 dark:bg-slate-800 rounded" />
-                    </td>
-                    <td className="py-3.5 px-4">
                       <div className="h-6 w-20 bg-slate-200 dark:bg-slate-800 rounded-full" />
                     </td>
                     <td className="py-3.5 px-4 text-right">
                       <div className="h-4 w-14 bg-slate-200 dark:bg-slate-800 rounded ml-auto" />
-                    </td>
-                    <td className="py-3.5 px-4 text-right">
-                      <div className="h-4 w-14 bg-slate-200 dark:bg-slate-800 rounded ml-auto" />
-                    </td>
-                    <td className="py-3.5 px-4 text-right">
-                      <div className="h-4 w-12 bg-slate-200 dark:bg-slate-800 rounded ml-auto" />
                     </td>
                     <td className="py-3.5 px-4 text-right">
                       <div className="h-8 w-8 bg-slate-200 dark:bg-slate-800 rounded-lg ml-auto" />
@@ -210,60 +217,48 @@ export default function InventoryPage() {
                   </tr>
                 ))
               ) : products.length > 0 ? (
-                products.map((p) => {
-                  const marginPct = p.selling_price > 0 ? ((p.selling_price - p.purchase_price) / p.selling_price) * 100 : 0;
-                  return (
-                    <tr key={p.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors">
-                      <td className="py-3 px-4">
-                        <div className="font-bold text-slate-900 dark:text-white">{p.name}</div>
-                        <div className="text-[11px] text-slate-400 mt-0.5">
-                          {[p.category, p.sku].filter(Boolean).join(' • ') || '—'}
-                        </div>
-                      </td>
-                      <td className="py-3 px-4 text-slate-600 dark:text-slate-300">
-                        {variant(p) || '—'}
-                      </td>
-                      <td className="py-3 px-4">
-                        <Badge variant={p.quantity === 0 ? 'destructive' : p.quantity <= p.low_stock ? 'warning' : 'success'}>
-                          {p.quantity === 0 ? 'Out of stock' : `${p.quantity} in stock`}
-                        </Badge>
-                      </td>
-                      <td className="py-3 px-4 text-right font-medium text-slate-600 dark:text-slate-300 font-mono">
-                        {money(p.purchase_price)}
-                      </td>
-                      <td className="py-3 px-4 text-right font-bold text-slate-900 dark:text-white font-mono">
-                        {p.selling_price > 0 ? (
-                          money(p.selling_price)
-                        ) : (
-                          <span className="text-xs text-slate-400 font-normal italic">At sale</span>
-                        )}
-                      </td>
-                      <td className={`py-3 px-4 text-right font-bold ${profitClass(marginPct)} font-mono`}>
-                        {p.selling_price > 0 ? (
-                          pct(marginPct)
-                        ) : (
-                          <span className="text-xs text-slate-400 font-normal">—</span>
-                        )}
-                      </td>
-                      <td className="py-3 px-4 text-right">
-                        <div className="flex items-center justify-end">
-                          <button
-                            type="button"
-                            onClick={(e) => handleOpenMenu(e, p)}
-                            className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-                            title="Actions menu"
-                            aria-label="Actions menu"
-                          >
-                            <MoreVertical className="h-4 w-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
+                products.map((p) => (
+                  <tr key={p.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors">
+                    <td className="py-3 px-4 max-w-[200px] lg:max-w-sm">
+                      <div className="font-bold text-slate-900 dark:text-white truncate" title={p.name}>
+                        {p.name}
+                      </div>
+                      <div
+                        className="text-[11px] text-slate-400 mt-0.5 truncate"
+                        title={[p.category, p.sku].filter(Boolean).join(' • ') || undefined}
+                      >
+                        {[p.category, p.sku].filter(Boolean).join(' • ') || '—'}
+                      </div>
+                    </td>
+                    <td className="py-3 px-4 whitespace-nowrap">
+                      <Badge
+                        variant={p.quantity === 0 ? 'destructive' : p.quantity <= p.low_stock ? 'warning' : 'success'}
+                        className="whitespace-nowrap"
+                      >
+                        {p.quantity === 0 ? 'Out of stock' : `${num(p.quantity)} in stock`}
+                      </Badge>
+                    </td>
+                    <td className="py-3 px-4 text-right font-medium text-slate-600 dark:text-slate-300 font-mono whitespace-nowrap">
+                      {money(p.purchase_price)}
+                    </td>
+                    <td className="py-3 px-4 text-right whitespace-nowrap w-16">
+                      <div className="flex items-center justify-end">
+                        <button
+                          type="button"
+                          onClick={(e) => handleOpenMenu(e, p)}
+                          className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                          title="Actions menu"
+                          aria-label="Actions menu"
+                        >
+                          <MoreVertical className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
               ) : (
                 <tr>
-                  <td colSpan={7} className="text-center py-16 text-slate-400">
+                  <td colSpan={4} className="text-center py-16 text-slate-400">
                     <Package className="mx-auto h-8 w-8 text-slate-300 mb-2" />
                     {search ? 'No products match your search query.' : 'No products found. Click "Add Product" to add your first item.'}
                   </td>
@@ -275,94 +270,60 @@ export default function InventoryPage() {
       </Card>
 
       {/* Mobile Card Stack View (< md screens) */}
-      <div className="block md:hidden space-y-3">
+      <div className="block md:hidden space-y-2">
         {loading ? (
-          <div className="space-y-3">
-            {[...Array(4)].map((_, i) => (
-              <Card key={i} className="p-4 rounded-xl space-y-3 shadow-xs animate-pulse border border-slate-200 dark:border-slate-800">
-                <div className="flex items-start justify-between">
-                  <div className="space-y-1.5">
-                    <div className="h-4 w-36 bg-slate-200 dark:bg-slate-800 rounded" />
-                    <div className="h-3 w-20 bg-slate-100 dark:bg-slate-800/60 rounded" />
-                  </div>
-                  <div className="h-5 w-16 bg-slate-200 dark:bg-slate-800 rounded-full" />
+          <div className="space-y-2">
+            {[...Array(5)].map((_, i) => (
+              <Card key={i} className="p-3 rounded-xl shadow-xs animate-pulse border border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3">
+                <div className="space-y-1.5 flex-1 min-w-0">
+                  <div className="h-3.5 w-28 bg-slate-200 dark:bg-slate-800 rounded" />
+                  <div className="h-2.5 w-16 bg-slate-100 dark:bg-slate-800/60 rounded" />
                 </div>
-                <div className="grid grid-cols-3 gap-2 py-2 border-y border-slate-100 dark:border-slate-800">
-                  <div className="h-8 bg-slate-100 dark:bg-slate-800/40 rounded" />
-                  <div className="h-8 bg-slate-100 dark:bg-slate-800/40 rounded" />
-                  <div className="h-8 bg-slate-100 dark:bg-slate-800/40 rounded" />
-                </div>
-                <div className="flex gap-2">
-                  <div className="h-9 flex-1 bg-slate-200 dark:bg-slate-800 rounded-lg" />
-                  <div className="h-9 w-9 bg-slate-200 dark:bg-slate-800 rounded-lg" />
+                <div className="flex items-center gap-2 shrink-0">
+                  <div className="h-4 w-12 bg-slate-200 dark:bg-slate-800 rounded" />
+                  <div className="h-5 w-14 bg-slate-200 dark:bg-slate-800 rounded-full" />
+                  <div className="h-8 w-8 bg-slate-200 dark:bg-slate-800 rounded-lg" />
                 </div>
               </Card>
             ))}
           </div>
         ) : products.length > 0 ? (
-          products.map((p) => {
-            const marginPct = p.selling_price > 0 ? ((p.selling_price - p.purchase_price) / p.selling_price) * 100 : 0;
-            return (
-              <Card key={p.id} className="p-4 rounded-xl space-y-3 shadow-xs">
-                <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <h3 className="font-bold text-base text-slate-900 dark:text-white">{p.name}</h3>
-                    <p className="text-xs text-slate-400 mt-0.5">
-                      {[p.category, variant(p), p.sku].filter(Boolean).join(' • ') || 'Standard'}
-                    </p>
-                  </div>
-                  <Badge variant={p.quantity === 0 ? 'destructive' : p.quantity <= p.low_stock ? 'warning' : 'success'}>
-                    {p.quantity === 0 ? 'Out' : `${p.quantity} pcs`}
-                  </Badge>
-                </div>
+          products.map((p) => (
+            <Card key={p.id} className="p-3 rounded-xl shadow-xs flex items-center justify-between gap-2.5 sm:gap-3 min-w-0">
+              <div className="min-w-0 flex-1">
+                <h3 className="font-semibold text-sm text-slate-900 dark:text-white truncate" title={p.name}>
+                  {p.name}
+                </h3>
+                <p
+                  className="text-[11px] text-slate-400 truncate mt-0.5"
+                  title={[p.category, p.sku].filter(Boolean).join(' • ') || undefined}
+                >
+                  {[p.category, p.sku].filter(Boolean).join(' • ') || 'Standard'}
+                </p>
+              </div>
 
-                <div className="grid grid-cols-3 gap-2 py-2 border-y border-slate-100 dark:border-slate-800 text-xs">
-                  <div>
-                    <span className="text-slate-400 block text-[10px] uppercase font-semibold">Cost</span>
-                    <span className="font-medium text-slate-700 dark:text-slate-300 font-mono">{money(p.purchase_price)}</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 block text-[10px] uppercase font-semibold">Price</span>
-                    {p.selling_price > 0 ? (
-                      <span className="font-bold text-slate-900 dark:text-white font-mono">{money(p.selling_price)}</span>
-                    ) : (
-                      <span className="text-xs text-slate-400 italic">At sale</span>
-                    )}
-                  </div>
-                  <div>
-                    <span className="text-slate-400 block text-[10px] uppercase font-semibold">Margin</span>
-                    {p.selling_price > 0 ? (
-                      <span className={`font-bold font-mono ${profitClass(marginPct)}`}>{pct(marginPct)}</span>
-                    ) : (
-                      <span className="text-xs text-slate-400 font-normal">—</span>
-                    )}
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2 pt-1">
-                  <Button
-                    size="sm"
-                    variant="primary"
-                    className="flex-1 font-bold"
-                    disabled={p.quantity <= 0}
-                    onClick={() => setSellProduct(p)}
-                  >
-                    <ShoppingCart className="h-3.5 w-3.5 mr-1" />
-                    Sell
-                  </Button>
-                  <button
-                    type="button"
-                    onClick={(e) => handleOpenMenu(e, p)}
-                    className="w-9 h-9 rounded-lg border border-slate-200 dark:border-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-                    title="Actions menu"
-                    aria-label="Actions menu"
-                  >
-                    <MoreVertical className="h-4 w-4" />
-                  </button>
-                </div>
-              </Card>
-            );
-          })
+              <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                <span className="font-bold text-slate-800 dark:text-slate-200 font-mono text-xs sm:text-sm whitespace-nowrap">
+                  {money(p.purchase_price)}
+                </span>
+                <Badge
+                  variant={p.quantity === 0 ? 'destructive' : p.quantity <= p.low_stock ? 'warning' : 'success'}
+                  className="whitespace-nowrap"
+                >
+                  {p.quantity === 0 ? 'Out' : `${num(p.quantity)} pcs`}
+                </Badge>
+                <button
+                  type="button"
+                  onClick={(e) => handleOpenMenu(e, p)}
+                  className="w-8 h-8 -mr-1 rounded-lg flex items-center justify-center text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer shrink-0"
+                  title="Actions menu"
+                  aria-label="Actions menu"
+                >
+                  <MoreVertical className="h-4 w-4" />
+                </button>
+              </div>
+            </Card>
+          ))
         ) : (
           <Card className="p-8 text-center text-slate-400">
             <Package className="mx-auto h-8 w-8 text-slate-300 mb-2" />
@@ -375,68 +336,63 @@ export default function InventoryPage() {
 
       {/* Backend Pagination Bar (Visible only if more than 10 products exist) */}
       {total > 10 && (
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2 text-xs text-slate-500 font-medium">
-          <div>
-            Showing <b className="text-slate-900 dark:text-white">{(page - 1) * 10 + 1}</b> to{' '}
-            <b className="text-slate-900 dark:text-white">{Math.min(page * 10, total)}</b> of{' '}
-            <b className="text-slate-900 dark:text-white">{total}</b> products
-          </div>
-          <div className="flex items-center gap-1.5">
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={page <= 1 || loading}
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              className="h-8 px-2.5 text-xs font-semibold gap-1"
-            >
-              <ChevronLeft className="h-3.5 w-3.5" />
-              Previous
-            </Button>
+        <div className="flex items-center justify-center gap-1.5 sm:gap-2 pt-3 text-xs text-slate-500 font-medium max-w-full">
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={page <= 1 || loading}
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            className="h-8 px-2 sm:px-2.5 text-xs font-semibold gap-1 shrink-0"
+            title="Previous page"
+            aria-label="Previous page"
+          >
+            <ChevronLeft className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Previous</span>
+          </Button>
 
-            <div className="flex items-center gap-1 px-1">
-              {Array.from({ length: totalPages }, (_, i) => i + 1)
-                .filter((p) => p === 1 || p === totalPages || Math.abs(p - page) <= 1)
-                .reduce<(number | string)[]>((acc, p, idx, arr) => {
-                  if (idx > 0 && (p as number) - (arr[idx - 1] as number) > 1) {
-                    acc.push('...');
-                  }
-                  acc.push(p);
-                  return acc;
-                }, [])
-                .map((p, idx) =>
-                  typeof p === 'string' ? (
-                    <span key={`ellipsis-${idx}`} className="px-1 text-slate-400">
-                      ...
-                    </span>
-                  ) : (
-                    <button
-                      key={p}
-                      type="button"
-                      onClick={() => setPage(p)}
-                      disabled={loading}
-                      className={`h-8 w-8 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                        page === p
-                          ? 'bg-teal-700 text-white shadow-xs'
-                          : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
-                      }`}
-                    >
-                      {p}
-                    </button>
-                  )
-                )}
-            </div>
-
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={page >= totalPages || loading}
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              className="h-8 px-2.5 text-xs font-semibold gap-1"
-            >
-              Next
-              <ChevronRight className="h-3.5 w-3.5" />
-            </Button>
+          {/* Mobile compact page indicator (fits any device width and never overflows or wraps) */}
+          <div className="flex sm:hidden items-center px-2 text-xs font-semibold text-slate-600 dark:text-slate-300 whitespace-nowrap">
+            Page <b className="text-slate-900 dark:text-white font-mono mx-1">{page}</b> of{' '}
+            <b className="text-slate-900 dark:text-white font-mono ml-1">{totalPages}</b>
           </div>
+
+          {/* Desktop numbered page pills */}
+          <div className="hidden sm:flex items-center gap-1">
+            {paginationItems.map((p, idx) =>
+              typeof p === 'string' ? (
+                <span key={`ellipsis-${idx}`} className="px-1 text-slate-400 select-none">
+                  ...
+                </span>
+              ) : (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => setPage(p)}
+                  disabled={loading}
+                  className={`min-w-[32px] h-8 px-2 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+                    page === p
+                      ? 'bg-teal-700 text-white shadow-xs'
+                      : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                  }`}
+                >
+                  {p}
+                </button>
+              )
+            )}
+          </div>
+
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={page >= totalPages || loading}
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            className="h-8 px-2 sm:px-2.5 text-xs font-semibold gap-1 shrink-0"
+            title="Next page"
+            aria-label="Next page"
+          >
+            <span className="hidden sm:inline">Next</span>
+            <ChevronRight className="h-3.5 w-3.5" />
+          </Button>
         </div>
       )}
 

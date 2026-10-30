@@ -79,8 +79,11 @@ export async function initDb() {
         unit_price NUMERIC(12, 2) NOT NULL,
         sold_at TIMESTAMPTZ NOT NULL,
         sold_date VARCHAR(10) NOT NULL,
-        note TEXT NOT NULL DEFAULT ''
+        note TEXT NOT NULL DEFAULT '',
+        payment_method VARCHAR(20) NOT NULL DEFAULT 'cash'
       );
+
+      ALTER TABLE sales ADD COLUMN IF NOT EXISTS payment_method VARCHAR(20) NOT NULL DEFAULT 'cash';
 
       CREATE TABLE IF NOT EXISTS stock_log (
         id SERIAL PRIMARY KEY,
@@ -93,6 +96,7 @@ export async function initDb() {
 
       CREATE INDEX IF NOT EXISTS idx_sales_date ON sales(sold_date);
       CREATE INDEX IF NOT EXISTS idx_sales_product ON sales(product_id);
+      CREATE INDEX IF NOT EXISTS idx_sales_payment_method ON sales(payment_method);
       CREATE INDEX IF NOT EXISTS idx_products_active ON products(active);
     `);
     isInitialized = true;

@@ -4,8 +4,9 @@ import * as React from 'react';
 import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogBody, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { money, profitClass, variant } from '@/lib/format';
+import { money, profitClass, variant, todayStr, addDays, longDate } from '@/lib/format';
 import { toast } from 'sonner';
+import { Calendar, Banknote, CreditCard, Clock, Check } from 'lucide-react';
 
 interface Product {
   id: number;
@@ -27,16 +28,19 @@ interface SellModalProps {
 export function SellModal({ product, open, onOpenChange, onSuccess }: SellModalProps) {
   const [quantity, setQuantity] = React.useState<number>(1);
   const [unitPrice, setUnitPrice] = React.useState<number | string>('');
-  const [soldDate, setSoldDate] = React.useState<string>('');
+  const [soldDate, setSoldDate] = React.useState<string>(todayStr());
+  const [paymentMethod, setPaymentMethod] = React.useState<'cash' | 'online' | 'due'>('cash');
   const [note, setNote] = React.useState<string>('');
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState('');
+  const dateInputRef = React.useRef<HTMLInputElement>(null);
 
   React.useEffect(() => {
     if (product) {
       setQuantity(1);
       setUnitPrice(product.selling_price && product.selling_price > 0 ? product.selling_price : '');
-      setSoldDate('');
+      setSoldDate(todayStr());
+      setPaymentMethod('cash');
       setNote('');
       setError('');
     }
@@ -68,7 +72,8 @@ export function SellModal({ product, open, onOpenChange, onSuccess }: SellModalP
           product_id: product.id,
           quantity,
           unit_price: numPrice,
-          sold_date: soldDate || undefined,
+          sold_date: soldDate || todayStr(),
+          payment_method: paymentMethod,
           note,
         }),
       });
@@ -76,13 +81,15 @@ export function SellModal({ product, open, onOpenChange, onSuccess }: SellModalP
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to record sale');
 
+      const methodLabel = paymentMethod === 'online' ? 'Online' : paymentMethod === 'due' ? 'Due' : 'Cash';
+
       if (isLoss) {
         toast.warning(`Sale recorded: ${quantity} × ${product.name}`, {
-          description: `Total: ${money(totalRevenue)} • Net Loss: ${money(totalProfit)}`,
+          description: `Total: ${money(totalRevenue)} • ${methodLabel} Sale • Net Loss: ${money(totalProfit)}`,
         });
       } else {
         toast.success(`Sale recorded: ${quantity} × ${product.name}`, {
-          description: `Total: ${money(totalRevenue)} • Profit: ${money(totalProfit)}`,
+          description: `Total: ${money(totalRevenue)} • ${methodLabel} Sale • Profit: ${money(totalProfit)}`,
         });
       }
 
@@ -146,11 +153,147 @@ export function SellModal({ product, open, onOpenChange, onSuccess }: SellModalP
             </div>
           </div>
 
+          {/* Sale Type / Payment Method (Cash, Online, Due) */}
           <div>
             <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 block">
-              Sale Date (Leave empty for today)
+              Payment / Sale Type *
             </label>
-            <Input type="date" value={soldDate} onChange={(e) => setSoldDate(e.target.value)} />
+            <div className="grid grid-cols-3 gap-2">
+              <button
+                type="button"
+                onClick={() => setPaymentMethod('cash')}
+                className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
+                  paymentMethod === 'cash'
+                    ? 'border-emerald-500 bg-emerald-50/70 dark:bg-emerald-950/40 dark:border-emerald-500/80 ring-2 ring-emerald-500/20'
+                    : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 hover:bg-slate-50 dark:hover:bg-slate-800/40'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <Banknote className={`h-4 w-4 ${paymentMethod === 'cash' ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}`} />
+                  {paymentMethod === 'cash' && <Check className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />}
+                </div>
+                <div>
+                  <div className={`text-xs font-bold ${paymentMethod === 'cash' ? 'text-emerald-900 dark:text-emerald-200' : 'text-slate-800 dark:text-slate-200'}`}>
+                    Cash Sale
+                  </div>
+                  <div className="text-[10px] text-slate-400">Cash in hand</div>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setPaymentMethod('online')}
+                className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
+                  paymentMethod === 'online'
+                    ? 'border-sky-500 bg-sky-50/70 dark:bg-sky-950/40 dark:border-sky-500/80 ring-2 ring-sky-500/20'
+                    : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 hover:bg-slate-50 dark:hover:bg-slate-800/40'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <CreditCard className={`h-4 w-4 ${paymentMethod === 'online' ? 'text-sky-600 dark:text-sky-400' : 'text-slate-400'}`} />
+                  {paymentMethod === 'online' && <Check className="h-3.5 w-3.5 text-sky-600 dark:text-sky-400" />}
+                </div>
+                <div>
+                  <div className={`text-xs font-bold ${paymentMethod === 'online' ? 'text-sky-900 dark:text-sky-200' : 'text-slate-800 dark:text-slate-200'}`}>
+                    Online Sale
+                  </div>
+                  <div className="text-[10px] text-slate-400">bKash / Card</div>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setPaymentMethod('due')}
+                className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
+                  paymentMethod === 'due'
+                    ? 'border-amber-500 bg-amber-50/70 dark:bg-amber-950/40 dark:border-amber-500/80 ring-2 ring-amber-500/20'
+                    : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 hover:bg-slate-50 dark:hover:bg-slate-800/40'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <Clock className={`h-4 w-4 ${paymentMethod === 'due' ? 'text-amber-600 dark:text-amber-400' : 'text-slate-400'}`} />
+                  {paymentMethod === 'due' && <Check className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />}
+                </div>
+                <div>
+                  <div className={`text-xs font-bold ${paymentMethod === 'due' ? 'text-amber-900 dark:text-amber-200' : 'text-slate-800 dark:text-slate-200'}`}>
+                    Due Sale
+                  </div>
+                  <div className="text-[10px] text-slate-400">Unpaid / Bakir</div>
+                </div>
+              </button>
+            </div>
+            {paymentMethod === 'due' && (
+              <p className="text-[11px] text-amber-600 dark:text-amber-400 mt-1.5 flex items-center gap-1 font-medium">
+                💡 Tip: Note customer name or contact below to keep track of this due sale.
+              </p>
+            )}
+          </div>
+
+          {/* Actual Date Picker with Presets and Calendar View */}
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                Sale Date *
+              </label>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => setSoldDate(todayStr())}
+                  className={`text-[11px] px-2 py-0.5 rounded font-medium transition-colors cursor-pointer ${
+                    soldDate === todayStr()
+                      ? 'bg-teal-100 dark:bg-teal-950/70 text-teal-800 dark:text-teal-300 font-semibold'
+                      : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'
+                  }`}
+                >
+                  Today
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSoldDate(addDays(todayStr(), -1))}
+                  className={`text-[11px] px-2 py-0.5 rounded font-medium transition-colors cursor-pointer ${
+                    soldDate === addDays(todayStr(), -1)
+                      ? 'bg-teal-100 dark:bg-teal-950/70 text-teal-800 dark:text-teal-300 font-semibold'
+                      : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'
+                  }`}
+                >
+                  Yesterday
+                </button>
+              </div>
+            </div>
+
+            <div
+              onClick={() => {
+                try {
+                  dateInputRef.current?.showPicker();
+                } catch {
+                  dateInputRef.current?.focus();
+                }
+              }}
+              className="flex items-center gap-2.5 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 hover:border-slate-300 dark:hover:border-slate-700 transition-colors cursor-pointer group"
+            >
+              <div className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 group-hover:bg-teal-50 dark:group-hover:bg-teal-950/50 group-hover:text-teal-700 dark:group-hover:text-teal-400 transition-colors">
+                <Calendar className="h-4 w-4" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                  {soldDate ? longDate(soldDate) : 'Select date'}
+                </div>
+                <div className="text-[10px] text-slate-400">
+                  {soldDate === todayStr() ? 'Today' : soldDate === addDays(todayStr(), -1) ? 'Yesterday' : soldDate}
+                </div>
+              </div>
+              <input
+                ref={dateInputRef}
+                type="date"
+                value={soldDate}
+                max={todayStr()}
+                onChange={(e) => setSoldDate(e.target.value)}
+                className="opacity-0 absolute w-0 h-0 pointer-events-none"
+              />
+              <span className="text-xs font-semibold text-teal-700 dark:text-teal-400 group-hover:underline">
+                Pick Date
+              </span>
+            </div>
           </div>
 
           <div>
@@ -158,7 +301,7 @@ export function SellModal({ product, open, onOpenChange, onSuccess }: SellModalP
               Note (Optional)
             </label>
             <Input
-              placeholder="e.g. Customer name, discount reason"
+              placeholder={paymentMethod === 'due' ? 'Customer name, phone number, due details...' : 'Customer name, discount reason...'}
               value={note}
               onChange={(e) => setNote(e.target.value)}
               maxLength={200}

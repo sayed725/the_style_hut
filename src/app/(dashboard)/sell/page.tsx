@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { SellModal } from '@/components/sell/sell-modal';
-import { money, variant } from '@/lib/format';
+import { money, num, variant } from '@/lib/format';
 import { Search, ShoppingBag, Plus, X, Tag } from 'lucide-react';
 
 export default function SellPage() {
@@ -40,6 +40,8 @@ export default function SellPage() {
     return ['all', ...Array.from(set)];
   }, [products]);
 
+  const categoriesCount = Math.max(0, categories.length - 1);
+
   const filtered = products.filter((p) => {
     if (p.quantity <= 0) return false;
     if (selectedCategory !== 'all' && p.category?.trim().toLowerCase() !== selectedCategory.toLowerCase()) {
@@ -55,22 +57,24 @@ export default function SellPage() {
   return (
     <div className="space-y-5">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white flex items-center gap-2.5">
+      <div className="flex items-center justify-between gap-3 min-w-0">
+        <div className="min-w-0 flex-1">
+          <h1 className="text-xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white truncate">
             Point of Sale
-            <Badge variant="outline" className="text-xs font-semibold py-0.5">
-              {totalInStock} pcs available
-            </Badge>
           </h1>
-          <p className="text-xs sm:text-sm text-slate-500 font-medium mt-0.5">
-            Select an item below to register an instant customer sale and deduct inventory.
+          <p className="text-xs sm:text-sm text-slate-500 font-medium mt-0.5 truncate">
+            {categoriesCount} {categoriesCount === 1 ? 'category' : 'categories'} • {num(totalInStock)} total pieces in stock
           </p>
         </div>
-        <Link href="/inventory">
-          <Button variant="outline" size="sm" className="self-start sm:self-auto font-medium">
-            <Plus className="h-3.5 w-3.5 mr-1" />
-            Add Stock
+        <Link href="/inventory" className="shrink-0">
+          <Button
+            variant="primary"
+            className="font-bold shadow-md h-9 w-9 p-0 sm:h-10 sm:w-auto sm:px-4 shrink-0"
+            title="Add Stock"
+            aria-label="Add Stock"
+          >
+            <Plus className="h-4 w-4 sm:mr-1.5" />
+            <span className="hidden sm:inline">Add Stock</span>
           </Button>
         </Link>
       </div>

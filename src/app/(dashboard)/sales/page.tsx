@@ -6,8 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { money, num, shortDate, profitClass, addDays, todayStr, monthStart, weekStart } from '@/lib/format';
-import { Download, Search, Undo2, ReceiptText, Calendar, X } from 'lucide-react';
-
+import { Download, Search, Undo2, ReceiptText, Calendar, X, Banknote, CreditCard, Clock, ArrowUpDown, Filter } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function SalesHistoryPage() {
@@ -15,6 +14,8 @@ export default function SalesHistoryPage() {
   const [to, setTo] = React.useState('');
   const [search, setSearch] = React.useState('');
   const [preset, setPreset] = React.useState('month');
+  const [paymentMethod, setPaymentMethod] = React.useState<string>('all');
+  const [sort, setSort] = React.useState<string>('date_desc');
   const [sales, setSales] = React.useState<any[]>([]);
   const [loading, setLoading] = React.useState(true);
 
@@ -48,7 +49,13 @@ export default function SalesHistoryPage() {
   const fetchSales = React.useCallback(() => {
     if (!from || !to) return;
     setLoading(true);
-    const qs = new URLSearchParams({ from, to, q: search.trim() });
+    const qs = new URLSearchParams({
+      from,
+      to,
+      q: search.trim(),
+      payment_method: paymentMethod,
+      sort,
+    });
     fetch(`/api/sales?${qs}`)
       .then((res) => res.json())
       .then((data) => {
@@ -56,7 +63,7 @@ export default function SalesHistoryPage() {
         setLoading(false);
       })
       .catch(() => setLoading(false));
-  }, [from, to, search]);
+  }, [from, to, search, paymentMethod, sort]);
 
   React.useEffect(() => {
     fetchSales();
@@ -77,6 +84,32 @@ export default function SalesHistoryPage() {
   const totalRevenue = sales.reduce((acc, s) => acc + (Number(s.revenue) || 0), 0);
   const totalProfit = sales.reduce((acc, s) => acc + (Number(s.profit) || 0), 0);
   const totalItems = sales.reduce((acc, s) => acc + (Number(s.quantity) || 0), 0);
+  const cashSalesTotal = sales.filter((s) => (s.payment_method || 'cash') === 'cash').reduce((acc, s) => acc + (Number(s.revenue) || 0), 0);
+  const onlineSalesTotal = sales.filter((s) => s.payment_method === 'online').reduce((acc, s) => acc + (Number(s.revenue) || 0), 0);
+  const dueSalesTotal = sales.filter((s) => s.payment_method === 'due').reduce((acc, s) => acc + (Number(s.revenue) || 0), 0);
+
+  const renderPaymentBadge = (method?: string) => {
+    const m = (method || 'cash').toLowerCase();
+    if (m === 'online') {
+      return (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-sky-50 dark:bg-sky-950/60 text-sky-700 dark:text-sky-300 border border-sky-200/80 dark:border-sky-800/80">
+          <CreditCard className="h-3 w-3" /> Online
+        </span>
+      );
+    }
+    if (m === 'due') {
+      return (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200/80 dark:border-amber-800/80">
+          <Clock className="h-3 w-3" /> Due
+        </span>
+      );
+    }
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/80">
+        <Banknote className="h-3 w-3" /> Cash
+      </span>
+    );
+  };
 
   return (
     <div className="space-y-5">
@@ -94,7 +127,7 @@ export default function SalesHistoryPage() {
           </p>
         </div>
         <a
-          href={`/api/sales/csv?from=${from}&to=${to}&q=${encodeURIComponent(search.trim())}`}
+          href={`/api/sales/csv?from=${from}&to=${to}&payment_method=${paymentMethod}&q=${encodeURIComponent(search.trim())}`}
           download
           className="self-start sm:self-auto"
         >
@@ -122,10 +155,10 @@ export default function SalesHistoryPage() {
             <button
               key={p.id}
               onClick={() => setDatePreset(p.id)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all touch-manipulation ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all touch-manipulation cursor-pointer ${
                 preset === p.id
                   ? 'bg-teal-700 text-white dark:bg-teal-600 shadow-xs'
-                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
               {p.label}
@@ -173,7 +206,7 @@ export default function SalesHistoryPage() {
               {search && (
                 <button
                   onClick={() => setSearch('')}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -182,16 +215,101 @@ export default function SalesHistoryPage() {
           </div>
         </div>
 
-        {/* Live Period Summary Banner */}
-        <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500 font-medium">
-          <div className="flex items-center gap-2">
+        {/* Sale Type Filters & Sort Controls */}
+        <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          {/* Sale Type Filter Chips */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none select-none">
+            <span className="text-xs font-semibold text-slate-400 mr-1 hidden sm:inline flex items-center gap-1">
+              <Filter className="h-3.5 w-3.5" /> Sale Type:
+            </span>
+            <button
+              type="button"
+              onClick={() => setPaymentMethod('all')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                paymentMethod === 'all'
+                  ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-xs'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              All Sales
+            </button>
+            <button
+              type="button"
+              onClick={() => setPaymentMethod('cash')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer ${
+                paymentMethod === 'cash'
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : 'bg-slate-100 dark:bg-slate-800 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40'
+              }`}
+            >
+              <Banknote className="h-3.5 w-3.5" />
+              Cash Sales
+            </button>
+            <button
+              type="button"
+              onClick={() => setPaymentMethod('online')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer ${
+                paymentMethod === 'online'
+                  ? 'bg-sky-600 text-white shadow-xs'
+                  : 'bg-slate-100 dark:bg-slate-800 text-sky-700 dark:text-sky-400 hover:bg-sky-50 dark:hover:bg-sky-950/40'
+              }`}
+            >
+              <CreditCard className="h-3.5 w-3.5" />
+              Online Sales
+            </button>
+            <button
+              type="button"
+              onClick={() => setPaymentMethod('due')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer ${
+                paymentMethod === 'due'
+                  ? 'bg-amber-600 text-white shadow-xs'
+                  : 'bg-slate-100 dark:bg-slate-800 text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/40'
+              }`}
+            >
+              <Clock className="h-3.5 w-3.5" />
+              Due Sales
+            </button>
+          </div>
+
+          {/* Sort Control */}
+          <div className="flex items-center gap-2 self-end sm:self-auto">
+            <span className="text-xs font-semibold text-slate-400 flex items-center gap-1 whitespace-nowrap">
+              <ArrowUpDown className="h-3.5 w-3.5" /> Sort:
+            </span>
+            <select
+              value={sort}
+              onChange={(e) => setSort(e.target.value)}
+              className="h-8 px-2.5 py-1 text-xs font-semibold rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-teal-500 cursor-pointer"
+            >
+              <option value="date_desc">Date: Newest First</option>
+              <option value="date_asc">Date: Oldest First</option>
+              <option value="payment_method">Sale Type (Cash / Online / Due)</option>
+              <option value="revenue_desc">Revenue: High to Low</option>
+              <option value="revenue_asc">Revenue: Low to High</option>
+              <option value="profit_desc">Profit: High to Low</option>
+              <option value="profit_asc">Profit: Low to High</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Live Period Summary Banner with Cash/Online/Due Breakdown */}
+        <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-500 font-medium">
+          <div className="flex flex-wrap items-center gap-2.5">
             <span><b>{sales.length}</b> sales</span>
             <span>•</span>
             <span><b>{num(totalItems)}</b> pcs sold</span>
+            <span className="hidden md:inline">•</span>
+            <span className="hidden md:flex items-center gap-2">
+              <span className="text-emerald-700 dark:text-emerald-400 font-medium">Cash: <b>{money(cashSalesTotal)}</b></span>
+              <span className="text-slate-300 dark:text-slate-700">/</span>
+              <span className="text-sky-700 dark:text-sky-400 font-medium">Online: <b>{money(onlineSalesTotal)}</b></span>
+              <span className="text-slate-300 dark:text-slate-700">/</span>
+              <span className="text-amber-700 dark:text-amber-400 font-medium">Due: <b>{money(dueSalesTotal)}</b></span>
+            </span>
           </div>
           <div className="flex items-center gap-3">
             <span>
-              Revenue: <b className="text-slate-900 dark:text-white font-mono">{money(totalRevenue)}</b>
+              Total Revenue: <b className="text-slate-900 dark:text-white font-mono">{money(totalRevenue)}</b>
             </span>
             <span>
               Profit: <b className={`font-mono ${profitClass(totalProfit)}`}>{money(totalProfit)}</b>
@@ -208,6 +326,7 @@ export default function SalesHistoryPage() {
               <tr>
                 <th className="py-3 px-4">Date</th>
                 <th className="py-3 px-4">Product Sold</th>
+                <th className="py-3 px-4">Sale Type</th>
                 <th className="py-3 px-4 text-right">Qty</th>
                 <th className="py-3 px-4 text-right">Unit Price</th>
                 <th className="py-3 px-4 text-right">Revenue</th>
@@ -218,7 +337,7 @@ export default function SalesHistoryPage() {
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="text-center py-12 text-slate-400">
+                  <td colSpan={8} className="text-center py-12 text-slate-400">
                     Loading sales records...
                   </td>
                 </tr>
@@ -231,6 +350,9 @@ export default function SalesHistoryPage() {
                     <td className="py-3 px-4">
                       <div className="font-bold text-slate-900 dark:text-white">{s.product_name}</div>
                       {s.note && <div className="text-[11px] text-slate-400 mt-0.5">{s.note}</div>}
+                    </td>
+                    <td className="py-3 px-4 whitespace-nowrap">
+                      {renderPaymentBadge(s.payment_method)}
                     </td>
                     <td className="py-3 px-4 text-right font-medium text-slate-700 dark:text-slate-300 font-mono">
                       {num(s.quantity)}
@@ -260,7 +382,7 @@ export default function SalesHistoryPage() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={7} className="text-center py-16 text-slate-400">
+                  <td colSpan={8} className="text-center py-16 text-slate-400">
                     <ReceiptText className="mx-auto h-8 w-8 text-slate-300 mb-2" />
                     No sales recorded for this date range.
                   </td>
@@ -282,11 +404,14 @@ export default function SalesHistoryPage() {
         ) : sales.length > 0 ? (
           sales.map((s) => (
             <Card key={s.id} className="p-4 rounded-xl space-y-3 shadow-xs">
-              {/* Header: Date + Undo Button */}
+              {/* Header: Date + Sale Type Badge + Undo Button */}
               <div className="flex items-center justify-between gap-2">
-                <span className="text-xs font-semibold text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md">
-                  {shortDate(s.sold_date)}
-                </span>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="text-xs font-semibold text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md">
+                    {shortDate(s.sold_date)}
+                  </span>
+                  {renderPaymentBadge(s.payment_method)}
+                </div>
                 <Button
                   size="sm"
                   variant="ghost"

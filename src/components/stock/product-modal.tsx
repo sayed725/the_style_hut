@@ -4,7 +4,7 @@ import * as React from 'react';
 import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogBody, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { money, pct } from '@/lib/format';
+import { money } from '@/lib/format';
 import { toast } from 'sonner';
 
 interface Product {
@@ -83,12 +83,12 @@ export function ProductModal({ product, open, onOpenChange, onSuccess }: Product
           name,
           category,
           purchase_price: buyPrice,
+          selling_price: product?.selling_price || 0,
           quantity: quantity || 0,
           low_stock: lowStock || 3,
           sku,
           size,
           color,
-          selling_price: product?.selling_price || 0,
         }),
       });
 

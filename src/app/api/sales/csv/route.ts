@@ -13,6 +13,9 @@ export async function GET(req: Request) {
   const from = searchParams.get('from') || addDays(today, -29);
   const to = searchParams.get('to') || today;
   const search = String(searchParams.get('q') || '').trim().slice(0, 60);
+  const paymentMethod = String(searchParams.get('payment_method') || 'all').toLowerCase();
+  const validMethods = ['cash', 'online', 'due'];
+  const methodFilter = validMethods.includes(paymentMethod) ? paymentMethod : 'all';
 
   const sql = `
     SELECT *,
@@ -21,9 +24,10 @@ export async function GET(req: Request) {
     FROM sales
     WHERE sold_date BETWEEN $1 AND $2
       AND ($3 = '' OR product_name ILIKE '%' || $4 || '%')
+      AND ($5 = 'all' OR payment_method = $5)
     ORDER BY sold_date DESC, id DESC LIMIT 5000`;
 
-  const { rows } = await query(sql, [from, to, search, search]);
+  const { rows } = await query(sql, [from, to, search, search, methodFilter]);
 
   const cell = (v: any) => {
     let s = String(v ?? '');
@@ -31,9 +35,10 @@ export async function GET(req: Request) {
     return `"${s.replace(/"/g, '""')}"`;
   };
 
-  const lines = [['Date', 'Product', 'Qty', 'Cost each', 'Price each', 'Revenue', 'Profit', 'Note'].join(',')];
+  const lines = [['Date', 'Product', 'Type', 'Qty', 'Cost each', 'Price each', 'Revenue', 'Profit', 'Note'].join(',')];
   for (const r of rows) {
-    lines.push([r.sold_date, r.product_name, r.quantity, r.unit_cost, r.unit_price, r.revenue, r.profit, r.note].map(cell).join(','));
+    const typeLabel = r.payment_method === 'online' ? 'Online' : r.payment_method === 'due' ? 'Due' : 'Cash';
+    lines.push([r.sold_date, r.product_name, typeLabel, r.quantity, r.unit_cost, r.unit_price, r.revenue, r.profit, r.note].map(cell).join(','));
   }
 
   const csv = '\uFEFF' + lines.join('\r\n');
