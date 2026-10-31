@@ -8,7 +8,81 @@ import { Badge } from '@/components/ui/badge';
 import { SalesChart } from '@/components/dashboard/sales-chart';
 import { RestockModal } from '@/components/stock/restock-modal';
 import { money, num, pct, longDate, shortDate, profitClass, variant } from '@/lib/format';
-import { ShoppingCart, Plus, AlertCircle, TrendingUp, Package, ArrowUpRight } from 'lucide-react';
+import { ShoppingCart, AlertCircle, ArrowUpRight } from 'lucide-react';
+
+function DashboardSkeleton() {
+  return (
+    <div className="space-y-6">
+      {/* Page Header Skeleton */}
+      <div className="flex items-center justify-between gap-3">
+        <div className="space-y-1.5">
+          <div className="h-7 sm:h-8 w-32 rounded-lg bg-slate-200/70 dark:bg-slate-800/70 animate-pulse" />
+          <div className="h-4 w-40 rounded bg-slate-100 dark:bg-slate-800/50 animate-pulse" />
+        </div>
+        <div className="h-9 sm:h-10 w-9 sm:w-28 rounded-lg bg-slate-200/70 dark:bg-slate-800/70 animate-pulse" />
+      </div>
+
+      {/* Top 3 Stats Grid Skeleton */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {[1, 2, 3].map((i) => (
+          <Card key={i} className="animate-pulse">
+            <CardHeader className="pb-2">
+              <div className="h-3.5 w-24 rounded bg-slate-200/70 dark:bg-slate-800/70" />
+              <div className="flex items-center justify-between gap-2 mt-2">
+                <div className="h-7 sm:h-8 w-28 rounded bg-slate-200/70 dark:bg-slate-800/70" />
+                <div className="h-5 w-20 rounded bg-slate-100 dark:bg-slate-800/50" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                <div className="h-4 w-16 rounded bg-slate-100 dark:bg-slate-800/50" />
+                <div className="h-1.5 w-1.5 rounded-full bg-slate-200 dark:bg-slate-700" />
+                <div className="h-4 w-16 rounded bg-slate-100 dark:bg-slate-800/50" />
+                <div className="h-1.5 w-1.5 rounded-full bg-slate-200 dark:bg-slate-700" />
+                <div className="h-4 w-14 rounded bg-slate-100 dark:bg-slate-800/50" />
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {/* Sales & Profit Chart Skeleton */}
+      <Card className="p-5 animate-pulse">
+        <div className="flex flex-row items-center justify-between pb-4">
+          <div className="space-y-1.5">
+            <div className="h-5 w-44 rounded bg-slate-200/70 dark:bg-slate-800/70" />
+            <div className="h-3.5 w-56 rounded bg-slate-100 dark:bg-slate-800/50" />
+          </div>
+          <div className="h-4 w-28 rounded bg-slate-100 dark:bg-slate-800/50" />
+        </div>
+        <div className="h-64 sm:h-72 rounded-xl bg-slate-100/70 dark:bg-slate-900/60" />
+      </Card>
+
+      {/* 2-Column Section Skeleton */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {[1, 2].map((i) => (
+          <Card key={i} className="p-4 sm:p-5 animate-pulse space-y-3">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
+              <div className="h-4.5 w-36 rounded bg-slate-200/70 dark:bg-slate-800/70" />
+              <div className="h-3.5 w-16 rounded bg-slate-100 dark:bg-slate-800/50" />
+            </div>
+            <div className="space-y-3 pt-1">
+              {[1, 2, 3, 4].map((j) => (
+                <div key={j} className="flex items-center justify-between">
+                  <div className="space-y-1">
+                    <div className="h-4 w-28 sm:w-36 rounded bg-slate-200/60 dark:bg-slate-800/60" />
+                    <div className="h-3 w-20 rounded bg-slate-100 dark:bg-slate-800/40" />
+                  </div>
+                  <div className="h-4 w-16 rounded bg-slate-200/60 dark:bg-slate-800/60" />
+                </div>
+              ))}
+            </div>
+          </Card>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export default function DashboardPage() {
   const [data, setData] = React.useState<any>(null);
@@ -35,11 +109,7 @@ export default function DashboardPage() {
   }, []);
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="w-8 h-8 border-4 border-teal-700 border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
+    return <DashboardSkeleton />;
   }
 
   if (!data) return null;
@@ -49,7 +119,7 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6">
       {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
             Dashboard
@@ -57,9 +127,13 @@ export default function DashboardPage() {
           <p className="text-xs sm:text-sm text-slate-500 font-medium mt-0.5">{longDate(data.today)}</p>
         </div>
         <Link href="/sell">
-          <Button variant="primary" className="w-full sm:w-auto font-bold shadow-md">
-            <ShoppingCart className="h-4 w-4 mr-1.5" />
-            New Sale
+          <Button
+            variant="primary"
+            className="font-bold shadow-md h-9 sm:h-10 px-2.5 sm:px-4 shrink-0 flex items-center justify-center gap-1.5"
+            title="New Sale"
+          >
+            <ShoppingCart className="h-4 w-4" />
+            <span className="hidden sm:inline">New Sale</span>
           </Button>
         </Link>
       </div>
@@ -70,17 +144,43 @@ export default function DashboardPage() {
         <Card>
           <CardHeader className="pb-2">
             <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Profit Today</span>
-            <div className={`text-2xl sm:text-3xl font-extrabold tracking-tight mt-1 ${profitClass(data.periods.today.profit)}`}>
-              {money(data.periods.today.profit)}
+            <div className="flex items-center justify-between gap-2 mt-1">
+              <div className={`text-2xl sm:text-3xl font-extrabold tracking-tight ${profitClass(data.periods.today.profit)}`}>
+                {money(data.periods.today.profit)}
+              </div>
+              <span
+                className={`font-bold px-2 py-0.5 rounded text-[11px] sm:text-xs font-mono border ${
+                  data.periods.today.margin < 0
+                    ? 'text-rose-700 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/60 border-rose-200/60 dark:border-rose-800/40'
+                    : 'text-teal-700 dark:text-teal-300 bg-teal-50 dark:bg-teal-950/60 border-teal-200/60 dark:border-teal-800/40'
+                }`}
+              >
+                {pct(data.periods.today.margin)} margin
+              </span>
             </div>
           </CardHeader>
           <CardContent>
-            <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-500 font-medium pt-1 border-t border-slate-100 dark:border-slate-800">
-              <span>Sales <b className="text-slate-900 dark:text-white">{money(data.periods.today.revenue)}</b></span>
-              <span>•</span>
-              <span><b className="text-slate-900 dark:text-white">{num(data.periods.today.items)}</b> pcs</span>
-              <span>•</span>
-              <span><b className="text-slate-900 dark:text-white">{pct(data.periods.today.margin)}</b> margin</span>
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 text-xs text-slate-500 pt-2 border-t border-slate-100 dark:border-slate-800">
+              <span className="inline-flex items-center gap-1 font-medium">
+                <span>Cost</span>
+                <span className="font-bold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-[11px] sm:text-xs font-mono">
+                  {money(data.periods.today.cost)}
+                </span>
+              </span>
+              <span className="text-slate-300 dark:text-slate-700">•</span>
+              <span className="inline-flex items-center gap-1 font-medium">
+                <span>Sale</span>
+                <span className="font-bold text-slate-900 dark:text-white bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-[11px] sm:text-xs font-mono">
+                  {money(data.periods.today.revenue)}
+                </span>
+              </span>
+              <span className="text-slate-300 dark:text-slate-700">•</span>
+              <span className="inline-flex items-center gap-1 font-medium">
+                <span className="font-bold text-slate-900 dark:text-white bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-[11px] sm:text-xs font-mono">
+                  {num(data.periods.today.items)}
+                </span>
+                <span>pcs</span>
+              </span>
             </div>
           </CardContent>
         </Card>
@@ -89,17 +189,43 @@ export default function DashboardPage() {
         <Card>
           <CardHeader className="pb-2">
             <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Profit This Week</span>
-            <div className={`text-2xl sm:text-3xl font-extrabold tracking-tight mt-1 ${profitClass(data.periods.week.profit)}`}>
-              {money(data.periods.week.profit)}
+            <div className="flex items-center justify-between gap-2 mt-1">
+              <div className={`text-2xl sm:text-3xl font-extrabold tracking-tight ${profitClass(data.periods.week.profit)}`}>
+                {money(data.periods.week.profit)}
+              </div>
+              <span
+                className={`font-bold px-2 py-0.5 rounded text-[11px] sm:text-xs font-mono border ${
+                  data.periods.week.margin < 0
+                    ? 'text-rose-700 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/60 border-rose-200/60 dark:border-rose-800/40'
+                    : 'text-teal-700 dark:text-teal-300 bg-teal-50 dark:bg-teal-950/60 border-teal-200/60 dark:border-teal-800/40'
+                }`}
+              >
+                {pct(data.periods.week.margin)} margin
+              </span>
             </div>
           </CardHeader>
           <CardContent>
-            <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-500 font-medium pt-1 border-t border-slate-100 dark:border-slate-800">
-              <span>Sales <b className="text-slate-900 dark:text-white">{money(data.periods.week.revenue)}</b></span>
-              <span>•</span>
-              <span><b className="text-slate-900 dark:text-white">{num(data.periods.week.items)}</b> pcs</span>
-              <span>•</span>
-              <span><b className="text-slate-900 dark:text-white">{pct(data.periods.week.margin)}</b> margin</span>
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 text-xs text-slate-500 pt-2 border-t border-slate-100 dark:border-slate-800">
+              <span className="inline-flex items-center gap-1 font-medium">
+                <span>Cost</span>
+                <span className="font-bold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-[11px] sm:text-xs font-mono">
+                  {money(data.periods.week.cost)}
+                </span>
+              </span>
+              <span className="text-slate-300 dark:text-slate-700">•</span>
+              <span className="inline-flex items-center gap-1 font-medium">
+                <span>Sale</span>
+                <span className="font-bold text-slate-900 dark:text-white bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-[11px] sm:text-xs font-mono">
+                  {money(data.periods.week.revenue)}
+                </span>
+              </span>
+              <span className="text-slate-300 dark:text-slate-700">•</span>
+              <span className="inline-flex items-center gap-1 font-medium">
+                <span className="font-bold text-slate-900 dark:text-white bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-[11px] sm:text-xs font-mono">
+                  {num(data.periods.week.items)}
+                </span>
+                <span>pcs</span>
+              </span>
             </div>
           </CardContent>
         </Card>
@@ -108,17 +234,43 @@ export default function DashboardPage() {
         <Card className="sm:col-span-2 lg:col-span-1">
           <CardHeader className="pb-2">
             <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Profit This Month</span>
-            <div className={`text-2xl sm:text-3xl font-extrabold tracking-tight mt-1 ${profitClass(data.periods.month.profit)}`}>
-              {money(data.periods.month.profit)}
+            <div className="flex items-center justify-between gap-2 mt-1">
+              <div className={`text-2xl sm:text-3xl font-extrabold tracking-tight ${profitClass(data.periods.month.profit)}`}>
+                {money(data.periods.month.profit)}
+              </div>
+              <span
+                className={`font-bold px-2 py-0.5 rounded text-[11px] sm:text-xs font-mono border ${
+                  data.periods.month.margin < 0
+                    ? 'text-rose-700 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/60 border-rose-200/60 dark:border-rose-800/40'
+                    : 'text-teal-700 dark:text-teal-300 bg-teal-50 dark:bg-teal-950/60 border-teal-200/60 dark:border-teal-800/40'
+                }`}
+              >
+                {pct(data.periods.month.margin)} margin
+              </span>
             </div>
           </CardHeader>
           <CardContent>
-            <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-500 font-medium pt-1 border-t border-slate-100 dark:border-slate-800">
-              <span>Sales <b className="text-slate-900 dark:text-white">{money(data.periods.month.revenue)}</b></span>
-              <span>•</span>
-              <span><b className="text-slate-900 dark:text-white">{num(data.periods.month.items)}</b> pcs</span>
-              <span>•</span>
-              <span><b className="text-slate-900 dark:text-white">{pct(data.periods.month.margin)}</b> margin</span>
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 text-xs text-slate-500 pt-2 border-t border-slate-100 dark:border-slate-800">
+              <span className="inline-flex items-center gap-1 font-medium">
+                <span>Cost</span>
+                <span className="font-bold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-[11px] sm:text-xs font-mono">
+                  {money(data.periods.month.cost)}
+                </span>
+              </span>
+              <span className="text-slate-300 dark:text-slate-700">•</span>
+              <span className="inline-flex items-center gap-1 font-medium">
+                <span>Sale</span>
+                <span className="font-bold text-slate-900 dark:text-white bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-[11px] sm:text-xs font-mono">
+                  {money(data.periods.month.revenue)}
+                </span>
+              </span>
+              <span className="text-slate-300 dark:text-slate-700">•</span>
+              <span className="inline-flex items-center gap-1 font-medium">
+                <span className="font-bold text-slate-900 dark:text-white bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-[11px] sm:text-xs font-mono">
+                  {num(data.periods.month.items)}
+                </span>
+                <span>pcs</span>
+              </span>
             </div>
           </CardContent>
         </Card>
