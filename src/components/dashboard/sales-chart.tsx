@@ -4,19 +4,22 @@ import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGri
 import { compact, money, shortDate } from '@/lib/format';
 
 interface ChartItem {
-  date: string;
+  date?: string;
+  label?: string;
   revenue: number;
+  cost?: number;
   profit: number;
 }
 
 interface SalesChartProps {
   data: ChartItem[];
+  showCost?: boolean;
 }
 
-export function SalesChart({ data }: SalesChartProps) {
+export function SalesChart({ data, showCost = false }: SalesChartProps) {
   const formattedData = data.map((d) => ({
     ...d,
-    label: shortDate(d.date),
+    label: d.label || (d.date ? shortDate(d.date) : ''),
   }));
 
   return (
@@ -44,13 +47,21 @@ export function SalesChart({ data }: SalesChartProps) {
               if (active && payload && payload.length) {
                 const item = payload[0].payload as ChartItem;
                 return (
-                  <div className="rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-3 shadow-lg text-xs">
-                    <p className="font-bold text-slate-700 dark:text-slate-300 mb-1">{item.date}</p>
-                    <p className="text-slate-600 dark:text-slate-400">
-                      Revenue: <span className="font-semibold text-slate-900 dark:text-white">{money(item.revenue)}</span>
+                  <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-3 shadow-lg text-xs space-y-1">
+                    <p className="font-bold text-slate-800 dark:text-slate-200 mb-1">{item.label || item.date}</p>
+                    <p className="text-slate-600 dark:text-slate-400 flex items-center justify-between gap-4">
+                      <span>Revenue:</span>
+                      <span className="font-mono font-bold text-slate-900 dark:text-white">{money(item.revenue)}</span>
                     </p>
-                    <p className="text-emerald-600 dark:text-emerald-400 font-semibold">
-                      Profit: {money(item.profit)}
+                    {showCost && item.cost !== undefined && (
+                      <p className="text-amber-600 dark:text-amber-400 flex items-center justify-between gap-4">
+                        <span>Cost:</span>
+                        <span className="font-mono font-bold">{money(item.cost)}</span>
+                      </p>
+                    )}
+                    <p className="text-emerald-600 dark:text-emerald-400 flex items-center justify-between gap-4 font-semibold">
+                      <span>Profit:</span>
+                      <span className="font-mono font-bold">{money(item.profit)}</span>
                     </p>
                   </div>
                 );
@@ -58,8 +69,18 @@ export function SalesChart({ data }: SalesChartProps) {
               return null;
             }}
           />
-          <Bar dataKey="revenue" fill="#cbd5e1" radius={[4, 4, 0, 0]} name="Revenue" />
-          <Bar dataKey="profit" fill="#0f766e" radius={[4, 4, 0, 0]} name="Profit" />
+          {showCost ? (
+            <>
+              <Bar dataKey="revenue" fill="#0284c7" radius={[4, 4, 0, 0]} name="Revenue" />
+              <Bar dataKey="cost" fill="#f59e0b" radius={[4, 4, 0, 0]} name="Cost" />
+              <Bar dataKey="profit" fill="#0f766e" radius={[4, 4, 0, 0]} name="Profit" />
+            </>
+          ) : (
+            <>
+              <Bar dataKey="revenue" fill="#cbd5e1" radius={[4, 4, 0, 0]} name="Revenue" />
+              <Bar dataKey="profit" fill="#0f766e" radius={[4, 4, 0, 0]} name="Profit" />
+            </>
+          )}
         </BarChart>
       </ResponsiveContainer>
     </div>
