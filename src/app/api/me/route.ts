@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { clearSession, getSessionUser } from '@/lib/auth';
 import { todayStr, weekStart, monthStart } from '@/lib/format';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST() {
   await clearSession();
   return NextResponse.json({ ok: true });

@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { createSession, verifyPassword } from '@/lib/auth';
 
+export const dynamic = 'force-dynamic';
+
 const DUMMY_HASH = '$2a$11$e8w.K2gEwE/8W/f4w7vMneKxQcWvC5o.Vb05h8xU6q5IbgzH9494q';
 
 export async function POST(req: Request) {

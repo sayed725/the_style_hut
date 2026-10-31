@@ -3,6 +3,8 @@ import { getSessionUser } from '@/lib/auth';
 import { query } from '@/lib/db';
 import { todayStr } from '@/lib/format';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   const user = await getSessionUser();
   if (!user) return NextResponse.json({ error: 'Please sign in' }, { status: 401 });

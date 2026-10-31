@@ -7,3 +7,5 @@ build/
 data/
 *.log
 .DS_Store
+*.tsbuildinfo
+.vercel

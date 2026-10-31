@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { getClient, query } from '@/lib/db';
 import { createSession, hashPassword } from '@/lib/auth';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(req: Request) {
   try {
     const { rows: countRows } = await query('SELECT COUNT(*)::int AS n FROM users');

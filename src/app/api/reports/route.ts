@@ -3,6 +3,8 @@ import { getSessionUser } from '@/lib/auth';
 import { query } from '@/lib/db';
 import { addDays, monthStart, todayStr, weekStart } from '@/lib/format';
 
+export const dynamic = 'force-dynamic';
+
 const r2 = (n: number) => Math.round((Number(n) + Number.EPSILON) * 100) / 100;
 
 const withProfit = (s: any) => {
