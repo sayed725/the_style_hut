@@ -12,11 +12,36 @@ export async function GET(req: Request) {
   const limit = isAll ? 1000 : Math.max(1, Math.min(100, parseInt(searchParams.get('limit') || '10', 10)));
   const offset = (page - 1) * limit;
   const search = String(searchParams.get('q') || searchParams.get('search') || '').trim();
-  const category = String(searchParams.get('category') || '').trim();
+  const categoryRaw = String(searchParams.get('category') || '').trim();
+  const category = categoryRaw.toLowerCase() === 'all' || !categoryRaw ? 'all' : categoryRaw;
+  const onlyInStock = searchParams.get('in_stock') === '1';
+  const sort = String(searchParams.get('sort') || 'newest').toLowerCase();
+
+  let orderBy = 'id DESC';
+  if (sort === 'name_asc') {
+    orderBy = 'name ASC, id DESC';
+  } else if (sort === 'name_desc') {
+    orderBy = 'name DESC, id DESC';
+  } else if (sort === 'stock_desc') {
+    orderBy = 'quantity DESC, id DESC';
+  } else if (sort === 'stock_asc') {
+    orderBy = 'quantity ASC, id DESC';
+  } else if (sort === 'price_desc') {
+    orderBy = 'selling_price DESC, id DESC';
+  } else if (sort === 'price_asc') {
+    orderBy = 'selling_price ASC, id DESC';
+  } else if (sort === 'oldest') {
+    orderBy = 'id ASC';
+  }
 
   let countSql = `SELECT COUNT(*)::int AS total, COALESCE(SUM(quantity)::int, 0) AS total_pieces FROM products WHERE active = 1`;
   let dataSql = `SELECT * FROM products WHERE active = 1`;
   const filterParams: any[] = [];
+
+  if (onlyInStock) {
+    countSql += ` AND quantity > 0`;
+    dataSql += ` AND quantity > 0`;
+  }
 
   if (search) {
     filterParams.push(`%${search}%`);
@@ -25,16 +50,16 @@ export async function GET(req: Request) {
     dataSql += filter;
   }
 
-  if (category && category.toLowerCase() !== 'all') {
+  if (category !== 'all') {
     filterParams.push(category);
-    const filter = ` AND LOWER(TRIM(category)) = LOWER(TRIM($${filterParams.length}))`;
+    const filter = ` AND LOWER(TRIM(COALESCE(category, ''))) = LOWER(TRIM($${filterParams.length}))`;
     countSql += filter;
     dataSql += filter;
   }
 
   const countParams = [...filterParams];
 
-  dataSql += ` ORDER BY id DESC`;
+  dataSql += ` ORDER BY ${orderBy}`;
 
   const dataParams = [...filterParams];
   if (!isAll) {
@@ -42,10 +67,11 @@ export async function GET(req: Request) {
     dataParams.push(limit, offset);
   }
 
-  const [countRes, dataRes, categoriesRes] = await Promise.all([
+  const [countRes, dataRes, categoriesRes, overallRes] = await Promise.all([
     query(countSql, countParams),
     query(dataSql, dataParams),
-    query(`SELECT DISTINCT category FROM products WHERE active = 1 AND category IS NOT NULL AND TRIM(category) != '' ORDER BY category ASC`),
+    query(`SELECT DISTINCT TRIM(category) AS category FROM products WHERE active = 1 AND category IS NOT NULL AND TRIM(category) != '' ORDER BY category ASC`),
+    query(`SELECT COUNT(DISTINCT TRIM(category))::int AS overall_categories, COALESCE(SUM(quantity)::int, 0) AS overall_pieces FROM products WHERE active = 1`),
   ]);
 
   const total = countRes.rows[0]?.total || 0;
@@ -58,6 +84,8 @@ export async function GET(req: Request) {
     categories,
     total,
     totalPieces,
+    overallCategoriesCount: overallRes.rows[0]?.overall_categories || 0,
+    overallTotalPieces: overallRes.rows[0]?.overall_pieces || 0,
     page,
     totalPages,
     limit,

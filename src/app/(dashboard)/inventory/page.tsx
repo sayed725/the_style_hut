@@ -10,7 +10,7 @@ import { ProductModal } from '@/components/stock/product-modal';
 import { RestockModal } from '@/components/stock/restock-modal';
 import { SellModal } from '@/components/sell/sell-modal';
 import { money, num, variant } from '@/lib/format';
-import { Plus, Search, Package, Edit, Trash2, ShoppingCart, MoreVertical, AlertTriangle, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { Plus, Search, Package, Edit, Trash2, ShoppingCart, MoreVertical, AlertTriangle, ChevronLeft, ChevronRight, X, ArrowUpDown, ChevronDown } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function InventoryPage() {
@@ -19,11 +19,14 @@ export default function InventoryPage() {
   const [debouncedSearch, setDebouncedSearch] = React.useState('');
   const [selectedCategory, setSelectedCategory] = React.useState('all');
   const [categories, setCategories] = React.useState<string[]>([]);
+  const [sort, setSort] = React.useState('newest');
   const [page, setPage] = React.useState(1);
   const [total, setTotal] = React.useState(0);
   const [totalPages, setTotalPages] = React.useState(1);
   const [totalPieces, setTotalPieces] = React.useState(0);
   const [loading, setLoading] = React.useState(true);
+
+  const abortControllerRef = React.useRef<AbortController | null>(null);
 
   // Modals state
   const [productModalOpen, setProductModalOpen] = React.useState(false);
@@ -95,10 +98,17 @@ export default function InventoryPage() {
   };
 
   const fetchProducts = React.useCallback(() => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     setLoading(true);
     const params = new URLSearchParams({
       page: String(page),
       limit: '10',
+      sort,
     });
     if (debouncedSearch.trim()) {
       params.set('q', debouncedSearch.trim());
@@ -107,7 +117,7 @@ export default function InventoryPage() {
       params.set('category', selectedCategory);
     }
 
-    fetch(`/api/products?${params.toString()}`)
+    fetch(`/api/products?${params.toString()}`, { signal: controller.signal })
       .then((res) => res.json())
       .then((data) => {
         if (data && Array.isArray(data.products)) {
@@ -126,8 +136,12 @@ export default function InventoryPage() {
         }
         setLoading(false);
       })
-      .catch(() => setLoading(false));
-  }, [page, debouncedSearch, selectedCategory]);
+      .catch((err) => {
+        if (err.name !== 'AbortError') {
+          setLoading(false);
+        }
+      });
+  }, [page, debouncedSearch, selectedCategory, sort]);
 
   React.useEffect(() => {
     fetchProducts();
@@ -182,28 +196,55 @@ export default function InventoryPage() {
         </Button>
       </div>
 
-      {/* Search & Category Filter Toolbar */}
+      {/* Search, Sort & Category Filter Toolbar */}
       <div className="space-y-3">
-        {/* Search Input */}
-        <div className="max-w-md w-full">
-          <div className="relative">
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Search Input */}
+          <div className="relative flex-1 min-w-[220px]">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <Input
               type="search"
               placeholder="Search by name, SKU, category, size..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-10 pr-9 h-10 shadow-xs rounded-xl"
+              className="pl-10 pr-9 h-10 shadow-xs rounded-xl text-xs sm:text-sm"
             />
             {search && (
               <button
-                onClick={() => setSearch('')}
+                onClick={() => {
+                  setSearch('');
+                  setDebouncedSearch('');
+                  setPage(1);
+                }}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
                 aria-label="Clear search"
               >
                 <X className="h-4 w-4" />
               </button>
             )}
+          </div>
+
+          {/* Sort Dropdown */}
+          <div className="relative shrink-0">
+            <select
+              value={sort}
+              onChange={(e) => {
+                setSort(e.target.value);
+                setPage(1);
+              }}
+              className="h-10 pl-8 pr-7 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-teal-500 cursor-pointer appearance-none shadow-xs"
+            >
+              <option value="newest">Newest First</option>
+              <option value="name_asc">Name: A to Z</option>
+              <option value="name_desc">Name: Z to A</option>
+              <option value="stock_desc">Stock: High to Low</option>
+              <option value="stock_asc">Stock: Low to High</option>
+              <option value="price_desc">Price: High to Low</option>
+              <option value="price_asc">Price: Low to High</option>
+              <option value="oldest">Oldest First</option>
+            </select>
+            <ArrowUpDown className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
+            <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
           </div>
         </div>
 

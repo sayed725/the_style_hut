@@ -8,51 +8,76 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { SellModal } from '@/components/sell/sell-modal';
 import { money, num, variant } from '@/lib/format';
-import { Search, ShoppingBag, Plus, X, Tag } from 'lucide-react';
+import { Search, ShoppingBag, Plus, X, Tag, ArrowUpDown, ChevronDown } from 'lucide-react';
 
 export default function SellPage() {
   const [products, setProducts] = React.useState<any[]>([]);
   const [search, setSearch] = React.useState('');
+  const [debouncedSearch, setDebouncedSearch] = React.useState('');
   const [selectedCategory, setSelectedCategory] = React.useState('all');
+  const [categories, setCategories] = React.useState<string[]>(['all']);
+  const [categoriesCount, setCategoriesCount] = React.useState(0);
+  const [totalInStock, setTotalInStock] = React.useState(0);
+  const [sort, setSort] = React.useState('newest');
   const [selectedProduct, setSelectedProduct] = React.useState<any>(null);
   const [loading, setLoading] = React.useState(true);
 
-  const fetchProducts = () => {
-    fetch('/api/products?all=1')
+  const abortControllerRef = React.useRef<AbortController | null>(null);
+
+  // Debounce search input for backend queries
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  const fetchProducts = React.useCallback(() => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
+    setLoading(true);
+    const params = new URLSearchParams({
+      all: '1',
+      in_stock: '1',
+      sort,
+    });
+    if (debouncedSearch.trim()) {
+      params.set('q', debouncedSearch.trim());
+    }
+    if (selectedCategory && selectedCategory !== 'all') {
+      params.set('category', selectedCategory);
+    }
+
+    fetch(`/api/products?${params.toString()}`, { signal: controller.signal })
       .then((res) => res.json())
       .then((data) => {
-        setProducts(Array.isArray(data) ? data : data?.products || []);
+        if (data && Array.isArray(data.products)) {
+          setProducts(data.products);
+          if (Array.isArray(data.categories)) {
+            setCategories(['all', ...data.categories]);
+            setCategoriesCount(data.overallCategoriesCount || data.categories.length);
+          }
+          setTotalInStock(data.overallTotalPieces || data.totalPieces || 0);
+        } else if (Array.isArray(data)) {
+          setProducts(data);
+          setTotalInStock(data.reduce((acc: number, p: any) => acc + (p.quantity || 0), 0));
+        }
         setLoading(false);
       })
-      .catch(() => setLoading(false));
-  };
+      .catch((err) => {
+        if (err.name !== 'AbortError') {
+          setLoading(false);
+        }
+      });
+  }, [debouncedSearch, selectedCategory, sort]);
 
   React.useEffect(() => {
     fetchProducts();
-  }, []);
-
-  // Extract unique categories for filter pills
-  const categories = React.useMemo(() => {
-    const set = new Set<string>();
-    products.forEach((p) => {
-      if (p.category?.trim()) set.add(p.category.trim());
-    });
-    return ['all', ...Array.from(set)];
-  }, [products]);
-
-  const categoriesCount = Math.max(0, categories.length - 1);
-
-  const filtered = products.filter((p) => {
-    if (p.quantity <= 0) return false;
-    if (selectedCategory !== 'all' && p.category?.trim().toLowerCase() !== selectedCategory.toLowerCase()) {
-      return false;
-    }
-    if (!search.trim()) return true;
-    const term = search.toLowerCase();
-    return [p.name, p.sku, p.category, p.size, p.color].join(' ').toLowerCase().includes(term);
-  });
-
-  const totalInStock = products.reduce((acc, p) => acc + (p.quantity || 0), 0);
+  }, [fetchProducts]);
 
   return (
     <div className="space-y-5">
@@ -82,27 +107,52 @@ export default function SellPage() {
         </Link>
       </div>
 
-      {/* Search & Category Filter Toolbar */}
+      {/* Search, Sort & Category Filter Toolbar */}
       <div className="space-y-3">
-        {/* Search Input */}
-        <div className="relative w-full max-w-lg">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-          <Input
-            type="search"
-            placeholder="Search by name, size, color, SKU..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-10 pr-9 h-11 text-sm sm:text-sm shadow-xs rounded-xl"
-            autoFocus
-          />
-          {search && (
-            <button
-              onClick={() => setSearch('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1"
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Search Input */}
+          <div className="relative flex-1 min-w-[220px]">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <Input
+              type="search"
+              placeholder="Search by name, size, color, SKU..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-10 pr-9 h-11 text-xs sm:text-sm shadow-xs rounded-xl"
+              autoFocus
+            />
+            {search && (
+              <button
+                onClick={() => {
+                  setSearch('');
+                  setDebouncedSearch('');
+                }}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
+                aria-label="Clear search"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+
+          {/* Sort Dropdown */}
+          <div className="relative shrink-0">
+            <select
+              value={sort}
+              onChange={(e) => setSort(e.target.value)}
+              className="h-11 pl-8 pr-7 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-teal-500 cursor-pointer appearance-none shadow-xs"
             >
-              <X className="h-4 w-4" />
-            </button>
-          )}
+              <option value="newest">Newest First</option>
+              <option value="name_asc">Name: A to Z</option>
+              <option value="name_desc">Name: Z to A</option>
+              <option value="stock_desc">Stock: High to Low</option>
+              <option value="stock_asc">Stock: Low to High</option>
+              <option value="price_desc">Price: High to Low</option>
+              <option value="price_asc">Price: Low to High</option>
+            </select>
+            <ArrowUpDown className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
+            <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
+          </div>
         </div>
 
         {/* Category Pills (Horizontal scrolling on touch devices) */}
@@ -112,7 +162,7 @@ export default function SellPage() {
               <button
                 key={cat}
                 onClick={() => setSelectedCategory(cat)}
-                className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all touch-manipulation capitalize ${
+                className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all touch-manipulation capitalize cursor-pointer ${
                   selectedCategory.toLowerCase() === cat.toLowerCase()
                     ? 'bg-teal-700 text-white dark:bg-teal-600 shadow-xs'
                     : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800'
@@ -129,12 +179,12 @@ export default function SellPage() {
       {loading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
           {[...Array(6)].map((_, i) => (
-            <div key={i} className="h-28 rounded-xl bg-slate-200/60 dark:bg-slate-800/60 animate-pulse" />
+            <div key={i} className="h-32 rounded-xl bg-slate-200/60 dark:bg-slate-800/60 animate-pulse" />
           ))}
         </div>
-      ) : filtered.length > 0 ? (
+      ) : products.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
-          {filtered.map((p) => {
+          {products.map((p) => {
             const isLowStock = p.quantity <= p.low_stock;
             return (
               <Card
@@ -209,7 +259,9 @@ export default function SellPage() {
               size="sm"
               onClick={() => {
                 setSearch('');
+                setDebouncedSearch('');
                 setSelectedCategory('all');
+                setSort('newest');
               }}
             >
               Reset Filters
