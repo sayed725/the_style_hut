@@ -12,36 +12,50 @@ export async function GET(req: Request) {
   const limit = isAll ? 1000 : Math.max(1, Math.min(100, parseInt(searchParams.get('limit') || '10', 10)));
   const offset = (page - 1) * limit;
   const search = String(searchParams.get('q') || searchParams.get('search') || '').trim();
+  const category = String(searchParams.get('category') || '').trim();
 
   let countSql = `SELECT COUNT(*)::int AS total, COALESCE(SUM(quantity)::int, 0) AS total_pieces FROM products WHERE active = 1`;
   let dataSql = `SELECT * FROM products WHERE active = 1`;
-  const params: any[] = [];
+  const filterParams: any[] = [];
 
   if (search) {
-    params.push(`%${search}%`);
-    const filter = ` AND (name ILIKE $1 OR sku ILIKE $1 OR category ILIKE $1 OR size ILIKE $1 OR color ILIKE $1)`;
+    filterParams.push(`%${search}%`);
+    const filter = ` AND (name ILIKE $${filterParams.length} OR sku ILIKE $${filterParams.length} OR category ILIKE $${filterParams.length} OR size ILIKE $${filterParams.length} OR color ILIKE $${filterParams.length})`;
     countSql += filter;
     dataSql += filter;
   }
 
-  dataSql += ` ORDER BY id DESC`;
-
-  if (!isAll) {
-    dataSql += ` LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
-    params.push(limit, offset);
+  if (category && category.toLowerCase() !== 'all') {
+    filterParams.push(category);
+    const filter = ` AND LOWER(TRIM(category)) = LOWER(TRIM($${filterParams.length}))`;
+    countSql += filter;
+    dataSql += filter;
   }
 
-  const [countRes, dataRes] = await Promise.all([
-    query(countSql, search ? [params[0]] : []),
-    query(dataSql, params),
+  const countParams = [...filterParams];
+
+  dataSql += ` ORDER BY id DESC`;
+
+  const dataParams = [...filterParams];
+  if (!isAll) {
+    dataSql += ` LIMIT $${dataParams.length + 1} OFFSET $${dataParams.length + 2}`;
+    dataParams.push(limit, offset);
+  }
+
+  const [countRes, dataRes, categoriesRes] = await Promise.all([
+    query(countSql, countParams),
+    query(dataSql, dataParams),
+    query(`SELECT DISTINCT category FROM products WHERE active = 1 AND category IS NOT NULL AND TRIM(category) != '' ORDER BY category ASC`),
   ]);
 
   const total = countRes.rows[0]?.total || 0;
   const totalPieces = countRes.rows[0]?.total_pieces || 0;
   const totalPages = Math.max(1, Math.ceil(total / limit));
+  const categories = categoriesRes.rows.map((r: any) => r.category.trim());
 
   return NextResponse.json({
     products: dataRes.rows,
+    categories,
     total,
     totalPieces,
     page,

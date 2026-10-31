@@ -10,13 +10,15 @@ import { ProductModal } from '@/components/stock/product-modal';
 import { RestockModal } from '@/components/stock/restock-modal';
 import { SellModal } from '@/components/sell/sell-modal';
 import { money, num, variant } from '@/lib/format';
-import { Plus, Search, Package, Edit, Trash2, ShoppingCart, MoreVertical, AlertTriangle, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Search, Package, Edit, Trash2, ShoppingCart, MoreVertical, AlertTriangle, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function InventoryPage() {
   const [products, setProducts] = React.useState<any[]>([]);
   const [search, setSearch] = React.useState('');
   const [debouncedSearch, setDebouncedSearch] = React.useState('');
+  const [selectedCategory, setSelectedCategory] = React.useState('all');
+  const [categories, setCategories] = React.useState<string[]>([]);
   const [page, setPage] = React.useState(1);
   const [total, setTotal] = React.useState(0);
   const [totalPages, setTotalPages] = React.useState(1);
@@ -101,6 +103,9 @@ export default function InventoryPage() {
     if (debouncedSearch.trim()) {
       params.set('q', debouncedSearch.trim());
     }
+    if (selectedCategory && selectedCategory !== 'all') {
+      params.set('category', selectedCategory);
+    }
 
     fetch(`/api/products?${params.toString()}`)
       .then((res) => res.json())
@@ -110,6 +115,9 @@ export default function InventoryPage() {
           setTotal(data.total || 0);
           setTotalPages(data.totalPages || 1);
           setTotalPieces(data.totalPieces || 0);
+          if (Array.isArray(data.categories)) {
+            setCategories(['all', ...data.categories]);
+          }
         } else if (Array.isArray(data)) {
           setProducts(data);
           setTotal(data.length);
@@ -119,7 +127,7 @@ export default function InventoryPage() {
         setLoading(false);
       })
       .catch(() => setLoading(false));
-  }, [page, debouncedSearch]);
+  }, [page, debouncedSearch, selectedCategory]);
 
   React.useEffect(() => {
     fetchProducts();
@@ -153,7 +161,10 @@ export default function InventoryPage() {
             Stock Management
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 font-medium mt-0.5 truncate">
-            {total} {total === 1 ? 'product' : 'products'} • {num(totalPieces)} total pieces on hand
+            <span className="text-teal-600 dark:text-teal-400 font-bold">{total}</span>{' '}
+            {total === 1 ? 'product' : 'products'} •{' '}
+            <span className="text-teal-600 dark:text-teal-400 font-bold">{num(totalPieces)}</span>{' '}
+            total pieces on hand
           </p>
         </div>
         <Button
@@ -171,18 +182,52 @@ export default function InventoryPage() {
         </Button>
       </div>
 
-      {/* Search Bar */}
-      <div className="max-w-md w-full">
-        <div className="relative">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-          <Input
-            type="search"
-            placeholder="Search by name, SKU, category, size..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-10 h-10 shadow-xs rounded-xl"
-          />
+      {/* Search & Category Filter Toolbar */}
+      <div className="space-y-3">
+        {/* Search Input */}
+        <div className="max-w-md w-full">
+          <div className="relative">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <Input
+              type="search"
+              placeholder="Search by name, SKU, category, size..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-10 pr-9 h-10 shadow-xs rounded-xl"
+            />
+            {search && (
+              <button
+                onClick={() => setSearch('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
+                aria-label="Clear search"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
         </div>
+
+        {/* Category Pills (Horizontal scrolling on touch devices) */}
+        {categories.length > 1 && (
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none select-none">
+            {categories.map((cat) => (
+              <button
+                key={cat}
+                onClick={() => {
+                  setSelectedCategory(cat);
+                  setPage(1);
+                }}
+                className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all touch-manipulation capitalize cursor-pointer ${
+                  selectedCategory.toLowerCase() === cat.toLowerCase()
+                    ? 'bg-teal-700 text-white dark:bg-teal-600 shadow-xs'
+                    : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800'
+                }`}
+              >
+                {cat === 'all' ? 'All Items' : cat}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Desktop Table View (>= md screens) */}
@@ -260,7 +305,7 @@ export default function InventoryPage() {
                 <tr>
                   <td colSpan={4} className="text-center py-16 text-slate-400">
                     <Package className="mx-auto h-8 w-8 text-slate-300 mb-2" />
-                    {search ? 'No products match your search query.' : 'No products found. Click "Add Product" to add your first item.'}
+                    {search || selectedCategory !== 'all' ? 'No products match your filter.' : 'No products found. Click "Add Product" to add your first item.'}
                   </td>
                 </tr>
               )}
@@ -328,7 +373,7 @@ export default function InventoryPage() {
           <Card className="p-8 text-center text-slate-400">
             <Package className="mx-auto h-8 w-8 text-slate-300 mb-2" />
             <p className="text-xs">
-              {search ? 'No products match your search query.' : 'No products found matching your search.'}
+              {search || selectedCategory !== 'all' ? 'No products match your filter.' : 'No products found. Click "Add Product" to add your first item.'}
             </p>
           </Card>
         )}

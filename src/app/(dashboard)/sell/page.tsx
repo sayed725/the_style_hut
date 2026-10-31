@@ -63,7 +63,10 @@ export default function SellPage() {
             Point of Sale
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 font-medium mt-0.5 truncate">
-            {categoriesCount} {categoriesCount === 1 ? 'category' : 'categories'} • {num(totalInStock)} total pieces in stock
+            <span className="text-teal-600 dark:text-teal-400 font-bold">{categoriesCount}</span>{' '}
+            {categoriesCount === 1 ? 'category' : 'categories'} •{' '}
+            <span className="text-teal-600 dark:text-teal-400 font-bold">{num(totalInStock)}</span>{' '}
+            total pieces in stock
           </p>
         </div>
         <Link href="/inventory" className="shrink-0">
