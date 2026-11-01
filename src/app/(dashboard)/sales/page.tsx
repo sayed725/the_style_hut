@@ -1,7 +1,8 @@
 'use client';
 
 import * as React from 'react';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -47,45 +48,24 @@ const formatProfitPct = (profit: number | string, revenue: number | string) => {
 };
 
 export default function SalesHistoryPage() {
-  const [from, setFrom] = React.useState('');
-  const [to, setTo] = React.useState('');
+  const queryClient = useQueryClient();
+  const [from, setFrom] = React.useState(() => todayStr());
+  const [to, setTo] = React.useState(() => todayStr());
   const [search, setSearch] = React.useState('');
   const [debouncedSearch, setDebouncedSearch] = React.useState('');
-  const [preset, setPreset] = React.useState('month');
+  const [preset, setPreset] = React.useState('today');
   const [paymentMethod, setPaymentMethod] = React.useState<string>('all');
   const [selectedCategory, setSelectedCategory] = React.useState<string>('all');
-  const [categories, setCategories] = React.useState<string[]>([]);
   const [sort, setSort] = React.useState<string>('date_desc');
-  const [sales, setSales] = React.useState<any[]>([]);
-  const [loading, setLoading] = React.useState(true);
   const [drawerOpen, setDrawerOpen] = React.useState(false);
   const [expandedCards, setExpandedCards] = React.useState<Record<number, boolean>>({});
 
-  const abortControllerRef = React.useRef<AbortController | null>(null);
-
   // Backend pagination state (10 items per page)
   const [page, setPage] = React.useState(1);
-  const [total, setTotal] = React.useState(0);
-  const [totalPages, setTotalPages] = React.useState(1);
-  const [summary, setSummary] = React.useState({
-    totalSales: 0,
-    totalItems: 0,
-    totalRevenue: 0,
-    totalProfit: 0,
-    cashTotal: 0,
-    onlineTotal: 0,
-    dueTotal: 0,
-  });
 
   const toggleExpand = (id: number) => {
     setExpandedCards((prev) => ({ ...prev, [id]: !prev[id] }));
   };
-
-  React.useEffect(() => {
-    const today = todayStr();
-    setFrom(monthStart(today));
-    setTo(today);
-  }, []);
 
   // Debounce search input so backend isn't spammed on every keystroke
   React.useEffect(() => {
@@ -103,6 +83,10 @@ export default function SalesHistoryPage() {
     if (key === 'today') {
       setFrom(today);
       setTo(today);
+    } else if (key === 'yesterday') {
+      const y = addDays(today, -1);
+      setFrom(y);
+      setTo(y);
     } else if (key === 'week') {
       setFrom(weekStart(today));
       setTo(today);
@@ -155,7 +139,7 @@ export default function SalesHistoryPage() {
 
   const activeFiltersCount = React.useMemo(() => {
     let count = 0;
-    if (preset !== 'month') count++;
+    if (preset !== 'today') count++;
     if (paymentMethod !== 'all') count++;
     if (selectedCategory !== 'all') count++;
     if (sort !== 'date_desc') count++;
@@ -164,8 +148,8 @@ export default function SalesHistoryPage() {
 
   const resetFilters = () => {
     const today = todayStr();
-    setPreset('month');
-    setFrom(monthStart(today));
+    setPreset('today');
+    setFrom(today);
     setTo(today);
     setPaymentMethod('all');
     setSelectedCategory('all');
@@ -175,64 +159,66 @@ export default function SalesHistoryPage() {
     setPage(1);
   };
 
-  const fetchSales = React.useCallback(() => {
-    if (!from || !to) return;
-
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
-    const controller = new AbortController();
-    abortControllerRef.current = controller;
-
-    setLoading(true);
-    const qs = new URLSearchParams({
-      from,
-      to,
-      q: debouncedSearch.trim(),
-      payment_method: paymentMethod,
-      category: selectedCategory,
-      sort,
-      page: String(page),
-      limit: '10',
-    });
-    fetch(`/api/sales?${qs}`, { signal: controller.signal })
-      .then((res) => res.json())
-      .then((data) => {
-        setSales(Array.isArray(data.rows) ? data.rows : []);
-        if (Array.isArray(data.categories)) {
-          setCategories(['all', ...data.categories]);
-        }
-        if (typeof data.total === 'number') {
-          setTotal(data.total);
-        }
-        if (typeof data.totalPages === 'number') {
-          setTotalPages(data.totalPages);
-        }
-        if (data.summary) {
-          setSummary(data.summary);
-        }
-        setLoading(false);
-      })
-      .catch((err) => {
-        if (err.name !== 'AbortError') {
-          setLoading(false);
-        }
+  const { data, isLoading: loading } = useQuery({
+    queryKey: [
+      'sales',
+      { from, to, q: debouncedSearch.trim(), paymentMethod, category: selectedCategory, sort, page },
+    ],
+    queryFn: async ({ signal }) => {
+      if (!from || !to) return null;
+      const qs = new URLSearchParams({
+        from,
+        to,
+        q: debouncedSearch.trim(),
+        payment_method: paymentMethod,
+        category: selectedCategory,
+        sort,
+        page: String(page),
+        limit: '10',
       });
-  }, [from, to, debouncedSearch, paymentMethod, selectedCategory, sort, page]);
+      const res = await fetch(`/api/sales?${qs}`, { signal });
+      if (!res.ok) throw new Error('Failed to load sales');
+      return res.json();
+    },
+    staleTime: 30 * 1000,
+  });
 
-  React.useEffect(() => {
-    fetchSales();
-  }, [fetchSales]);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const sales: any[] = React.useMemo(() => (Array.isArray(data?.rows) ? data.rows : []), [data]);
+  const categories: string[] = React.useMemo(
+    () => (Array.isArray(data?.categories) ? ['all', ...data.categories] : ['all']),
+    [data]
+  );
+  const total: number = data?.total ?? 0;
+  const totalPages: number = data?.totalPages ?? 1;
+  const summary = data?.summary ?? {
+    totalSales: 0,
+    totalItems: 0,
+    totalRevenue: 0,
+    totalProfit: 0,
+    cashTotal: 0,
+    onlineTotal: 0,
+    dueTotal: 0,
+  };
 
   const handleUndo = async (id: number, productName: string) => {
-    if (!confirm(`Delete this sale for "${productName}"? The pieces will immediately return to your available stock.`)) return;
+    if (
+      !confirm(
+        `Delete this sale for "${productName}"? The pieces will immediately return to your available stock.`
+      )
+    )
+      return;
     try {
       const res = await fetch(`/api/sales/${id}`, { method: 'DELETE' });
       if (!res.ok) throw new Error('Failed to undo sale');
       toast.success(`Sale for "${productName}" deleted. Inventory has been restored.`);
-      fetchSales();
-    } catch (err: any) {
-      toast.error(err.message || 'Failed to undo sale');
+      queryClient.invalidateQueries({ queryKey: ['sales'] });
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['report'] });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to undo sale';
+      toast.error(msg);
     }
   };
 
@@ -327,6 +313,7 @@ export default function SalesHistoryPage() {
               className="h-9.5 pl-8 pr-7 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-teal-500 cursor-pointer appearance-none"
             >
               <option value="today">Today</option>
+              <option value="yesterday">Yesterday</option>
               <option value="week">This Week</option>
               <option value="month">This Month</option>
               <option value="d30">Last 30 Days</option>
@@ -485,6 +472,7 @@ export default function SalesHistoryPage() {
             <div className="grid grid-cols-3 gap-1.5">
               {[
                 { id: 'today', label: 'Today' },
+                { id: 'yesterday', label: 'Yesterday' },
                 { id: 'week', label: 'This Week' },
                 { id: 'month', label: 'This Month' },
                 { id: 'd30', label: 'Last 30 Days' },

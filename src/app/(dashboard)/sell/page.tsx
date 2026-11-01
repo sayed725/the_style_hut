@@ -2,27 +2,22 @@
 
 import * as React from 'react';
 import Link from 'next/link';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { SellModal } from '@/components/sell/sell-modal';
-import { money, num, variant } from '@/lib/format';
+import { money, num } from '@/lib/format';
 import { Search, ShoppingBag, Plus, X, Tag, ArrowUpDown, ChevronDown } from 'lucide-react';
 
 export default function SellPage() {
-  const [products, setProducts] = React.useState<any[]>([]);
+  const queryClient = useQueryClient();
   const [search, setSearch] = React.useState('');
   const [debouncedSearch, setDebouncedSearch] = React.useState('');
   const [selectedCategory, setSelectedCategory] = React.useState('all');
-  const [categories, setCategories] = React.useState<string[]>(['all']);
-  const [categoriesCount, setCategoriesCount] = React.useState(0);
-  const [totalInStock, setTotalInStock] = React.useState(0);
   const [sort, setSort] = React.useState('newest');
   const [selectedProduct, setSelectedProduct] = React.useState<any>(null);
-  const [loading, setLoading] = React.useState(true);
-
-  const abortControllerRef = React.useRef<AbortController | null>(null);
 
   // Debounce search input for backend queries
   React.useEffect(() => {
@@ -32,52 +27,55 @@ export default function SellPage() {
     return () => clearTimeout(timer);
   }, [search]);
 
-  const fetchProducts = React.useCallback(() => {
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
-    const controller = new AbortController();
-    abortControllerRef.current = controller;
-
-    setLoading(true);
-    const params = new URLSearchParams({
-      all: '1',
-      in_stock: '1',
-      sort,
-    });
-    if (debouncedSearch.trim()) {
-      params.set('q', debouncedSearch.trim());
-    }
-    if (selectedCategory && selectedCategory !== 'all') {
-      params.set('category', selectedCategory);
-    }
-
-    fetch(`/api/products?${params.toString()}`, { signal: controller.signal })
-      .then((res) => res.json())
-      .then((data) => {
-        if (data && Array.isArray(data.products)) {
-          setProducts(data.products);
-          if (Array.isArray(data.categories)) {
-            setCategories(['all', ...data.categories]);
-            setCategoriesCount(data.overallCategoriesCount || data.categories.length);
-          }
-          setTotalInStock(data.overallTotalPieces || data.totalPieces || 0);
-        } else if (Array.isArray(data)) {
-          setProducts(data);
-          setTotalInStock(data.reduce((acc: number, p: any) => acc + (p.quantity || 0), 0));
-        }
-        setLoading(false);
-      })
-      .catch((err) => {
-        if (err.name !== 'AbortError') {
-          setLoading(false);
-        }
+  const { data, isLoading: loading } = useQuery({
+    queryKey: ['products', 'pos', { q: debouncedSearch.trim(), category: selectedCategory, sort }],
+    queryFn: async ({ signal }) => {
+      const params = new URLSearchParams({
+        all: '1',
+        in_stock: '1',
+        sort,
       });
-  }, [debouncedSearch, selectedCategory, sort]);
+      if (debouncedSearch.trim()) {
+        params.set('q', debouncedSearch.trim());
+      }
+      if (selectedCategory && selectedCategory !== 'all') {
+        params.set('category', selectedCategory);
+      }
 
-  React.useEffect(() => {
-    fetchProducts();
-  }, [fetchProducts]);
+      const res = await fetch(`/api/products?${params.toString()}`, { signal });
+      if (!res.ok) throw new Error('Failed to fetch products');
+      return res.json();
+    },
+    staleTime: 15 * 1000,
+  });
+
+  const products: any[] = React.useMemo(() => {
+    if (data && Array.isArray(data.products)) return data.products;
+    if (Array.isArray(data)) return data;
+    return [];
+  }, [data]);
+
+  const categories: string[] = React.useMemo(() => {
+    if (data && Array.isArray(data.categories)) return ['all', ...data.categories];
+    return ['all'];
+  }, [data]);
+
+  const categoriesCount: number =
+    data?.overallCategoriesCount ||
+    data?.categories?.length ||
+    (categories.length > 1 ? categories.length - 1 : 0);
+
+  const totalInStock: number =
+    data?.overallTotalPieces ||
+    data?.totalPieces ||
+    products.reduce((acc: number, p: any) => acc + (p.quantity || 0), 0);
+
+  const handleSaleSuccess = () => {
+    queryClient.invalidateQueries({ queryKey: ['products'] });
+    queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+    queryClient.invalidateQueries({ queryKey: ['sales'] });
+    queryClient.invalidateQueries({ queryKey: ['report'] });
+  };
 
   return (
     <div className="space-y-5">
@@ -282,7 +280,7 @@ export default function SellPage() {
         product={selectedProduct}
         open={!!selectedProduct}
         onOpenChange={(open) => !open && setSelectedProduct(null)}
-        onSuccess={fetchProducts}
+        onSuccess={handleSaleSuccess}
       />
     </div>
   );

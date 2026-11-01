@@ -11,6 +11,7 @@
     "migrate-to-neon": "node migrate-to-pg.js"
   },
   "dependencies": {
+    "@tanstack/react-query": "^5.105.0",
     "@types/bcryptjs": "^2.4.6",
     "@types/pg": "^8.23.1",
     "bcryptjs": "^3.0.3",

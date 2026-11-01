@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,24 +10,17 @@ import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogBody, Dialo
 import { ProductModal } from '@/components/stock/product-modal';
 import { RestockModal } from '@/components/stock/restock-modal';
 import { SellModal } from '@/components/sell/sell-modal';
-import { money, num, variant } from '@/lib/format';
+import { money, num } from '@/lib/format';
 import { Plus, Search, Package, Edit, Trash2, ShoppingCart, MoreVertical, AlertTriangle, ChevronLeft, ChevronRight, X, ArrowUpDown, ChevronDown } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function InventoryPage() {
-  const [products, setProducts] = React.useState<any[]>([]);
+  const queryClient = useQueryClient();
   const [search, setSearch] = React.useState('');
   const [debouncedSearch, setDebouncedSearch] = React.useState('');
   const [selectedCategory, setSelectedCategory] = React.useState('all');
-  const [categories, setCategories] = React.useState<string[]>([]);
   const [sort, setSort] = React.useState('newest');
   const [page, setPage] = React.useState(1);
-  const [total, setTotal] = React.useState(0);
-  const [totalPages, setTotalPages] = React.useState(1);
-  const [totalPieces, setTotalPieces] = React.useState(0);
-  const [loading, setLoading] = React.useState(true);
-
-  const abortControllerRef = React.useRef<AbortController | null>(null);
 
   // Modals state
   const [productModalOpen, setProductModalOpen] = React.useState(false);
@@ -49,23 +43,6 @@ export default function InventoryPage() {
     }, 250);
     return () => clearTimeout(timer);
   }, [search]);
-
-  // Memoize pagination items to prevent large array generation and handle any number of pages safely
-  const paginationItems = React.useMemo(() => {
-    if (totalPages <= 5) {
-      return Array.from({ length: totalPages }, (_, i) => i + 1);
-    }
-    const items: (number | string)[] = [1];
-    const start = Math.max(2, page - 1);
-    const end = Math.min(totalPages - 1, page + 1);
-
-    if (start > 2) items.push('...');
-    for (let i = start; i <= end; i++) items.push(i);
-    if (end < totalPages - 1) items.push('...');
-
-    items.push(totalPages);
-    return items;
-  }, [page, totalPages]);
 
   React.useEffect(() => {
     if (!activeMenu) return;
@@ -97,55 +74,66 @@ export default function InventoryPage() {
     }
   };
 
-  const fetchProducts = React.useCallback(() => {
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
-    const controller = new AbortController();
-    abortControllerRef.current = controller;
-
-    setLoading(true);
-    const params = new URLSearchParams({
-      page: String(page),
-      limit: '10',
-      sort,
-    });
-    if (debouncedSearch.trim()) {
-      params.set('q', debouncedSearch.trim());
-    }
-    if (selectedCategory && selectedCategory !== 'all') {
-      params.set('category', selectedCategory);
-    }
-
-    fetch(`/api/products?${params.toString()}`, { signal: controller.signal })
-      .then((res) => res.json())
-      .then((data) => {
-        if (data && Array.isArray(data.products)) {
-          setProducts(data.products);
-          setTotal(data.total || 0);
-          setTotalPages(data.totalPages || 1);
-          setTotalPieces(data.totalPieces || 0);
-          if (Array.isArray(data.categories)) {
-            setCategories(['all', ...data.categories]);
-          }
-        } else if (Array.isArray(data)) {
-          setProducts(data);
-          setTotal(data.length);
-          setTotalPages(Math.max(1, Math.ceil(data.length / 10)));
-          setTotalPieces(data.reduce((acc: number, p: any) => acc + (p.quantity || 0), 0));
-        }
-        setLoading(false);
-      })
-      .catch((err) => {
-        if (err.name !== 'AbortError') {
-          setLoading(false);
-        }
+  const { data, isLoading: loading } = useQuery({
+    queryKey: ['products', 'inventory', { page, sort, q: debouncedSearch.trim(), category: selectedCategory }],
+    queryFn: async ({ signal }) => {
+      const params = new URLSearchParams({
+        page: String(page),
+        limit: '10',
+        sort,
       });
-  }, [page, debouncedSearch, selectedCategory, sort]);
+      if (debouncedSearch.trim()) {
+        params.set('q', debouncedSearch.trim());
+      }
+      if (selectedCategory && selectedCategory !== 'all') {
+        params.set('category', selectedCategory);
+      }
 
-  React.useEffect(() => {
-    fetchProducts();
-  }, [fetchProducts]);
+      const res = await fetch(`/api/products?${params.toString()}`, { signal });
+      if (!res.ok) throw new Error('Failed to load products');
+      return res.json();
+    },
+    staleTime: 30 * 1000,
+  });
+
+  const products: any[] = React.useMemo(() => {
+    if (data && Array.isArray(data.products)) return data.products;
+    if (Array.isArray(data)) return data;
+    return [];
+  }, [data]);
+
+  const total: number = data?.total ?? (Array.isArray(data) ? data.length : 0);
+  const totalPages: number = data?.totalPages ?? Math.max(1, Math.ceil(total / 10));
+  const totalPieces: number = data?.totalPieces ?? products.reduce((acc: number, p: any) => acc + (p.quantity || 0), 0);
+
+  const categories: string[] = React.useMemo(() => {
+    if (data && Array.isArray(data.categories)) return ['all', ...data.categories];
+    return ['all'];
+  }, [data]);
+
+  // Memoize pagination items to prevent large array generation and handle any number of pages safely
+  const paginationItems = React.useMemo(() => {
+    if (totalPages <= 5) {
+      return Array.from({ length: totalPages }, (_, i) => i + 1);
+    }
+    const items: (number | string)[] = [1];
+    const start = Math.max(2, page - 1);
+    const end = Math.min(totalPages - 1, page + 1);
+
+    if (start > 2) items.push('...');
+    for (let i = start; i <= end; i++) items.push(i);
+    if (end < totalPages - 1) items.push('...');
+
+    items.push(totalPages);
+    return items;
+  }, [page, totalPages]);
+
+  const refreshAll = () => {
+    queryClient.invalidateQueries({ queryKey: ['products'] });
+    queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+    queryClient.invalidateQueries({ queryKey: ['sales'] });
+    queryClient.invalidateQueries({ queryKey: ['report'] });
+  };
 
   const confirmRemove = async () => {
     if (!removingProduct) return;
@@ -158,7 +146,7 @@ export default function InventoryPage() {
       }
       toast.success(`"${removingProduct.name}" removed / archived.`);
       setRemovingProduct(null);
-      fetchProducts();
+      refreshAll();
     } catch (err: any) {
       toast.error(err.message || 'Failed to remove product');
     } finally {
@@ -487,7 +475,7 @@ export default function InventoryPage() {
         product={editingProduct}
         open={productModalOpen}
         onOpenChange={setProductModalOpen}
-        onSuccess={fetchProducts}
+        onSuccess={refreshAll}
       />
 
       {/* Restock Modal */}
@@ -495,7 +483,7 @@ export default function InventoryPage() {
         product={restockProduct}
         open={!!restockProduct}
         onOpenChange={(open) => !open && setRestockProduct(null)}
-        onSuccess={fetchProducts}
+        onSuccess={refreshAll}
       />
 
       {/* Quick Sell Modal */}
@@ -503,7 +491,7 @@ export default function InventoryPage() {
         product={sellProduct}
         open={!!sellProduct}
         onOpenChange={(open) => !open && setSellProduct(null)}
-        onSuccess={fetchProducts}
+        onSuccess={refreshAll}
       />
 
       {/* 3-Dot Floating Context Menu */}

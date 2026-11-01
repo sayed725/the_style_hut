@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSessionUser } from '@/lib/auth';
 import { query } from '@/lib/db';
-import { addDays, monthStart, todayStr, weekStart } from '@/lib/format';
+import { addDays, todayStr, weekStart } from '@/lib/format';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,7 +28,7 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const tz = process.env.STORE_TZ || 'Asia/Dhaka';
   const t = todayStr(tz);
-  const fromRaw = searchParams.get('from') || monthStart(t);
+  const fromRaw = searchParams.get('from') || t;
   const toRaw = searchParams.get('to') || t;
   const from = fromRaw <= toRaw ? fromRaw : toRaw;
   const to = fromRaw <= toRaw ? toRaw : fromRaw;

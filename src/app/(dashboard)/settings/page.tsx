@@ -6,7 +6,6 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
-  Download,
   KeyRound,
   LogOut,
   ShieldCheck,
@@ -17,18 +16,7 @@ import {
   EyeOff,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { todayStr, addDays, weekStart, monthStart, shortDate } from '@/lib/format';
-
-function getLastMonthRange(currentDateStr: string) {
-  const d = new Date(currentDateStr + 'T00:00:00Z');
-  const firstOfCurrent = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1));
-  const lastOfPrev = new Date(firstOfCurrent.getTime() - 86400000);
-  const firstOfPrev = new Date(Date.UTC(lastOfPrev.getUTCFullYear(), lastOfPrev.getUTCMonth(), 1));
-  return {
-    from: firstOfPrev.toISOString().slice(0, 10),
-    to: lastOfPrev.toISOString().slice(0, 10),
-  };
-}
+import { todayStr, addDays, monthStart, shortDate } from '@/lib/format';
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -46,14 +34,12 @@ export default function SettingsPage() {
   const tz = 'Asia/Dhaka';
   const today = todayStr(tz);
   const [pdfPreset, setPdfPreset] = React.useState<
-    'today' | 'yesterday' | 'week' | 'last7' | 'month' | 'last_month' | 'custom'
+    'today' | 'yesterday' | 'week' | 'month' | 'custom'
   >('today');
   const [pdfFrom, setPdfFrom] = React.useState(today);
   const [pdfTo, setPdfTo] = React.useState(today);
 
-  const applyPreset = (
-    preset: 'today' | 'yesterday' | 'week' | 'last7' | 'month' | 'last_month' | 'custom'
-  ) => {
+  const applyPreset = (preset: 'today' | 'yesterday' | 'week' | 'month' | 'custom') => {
     setPdfPreset(preset);
     if (preset === 'today') {
       setPdfFrom(today);
@@ -63,22 +49,15 @@ export default function SettingsPage() {
       setPdfFrom(y);
       setPdfTo(y);
     } else if (preset === 'week') {
-      setPdfFrom(weekStart(today, 6));
-      setPdfTo(today);
-    } else if (preset === 'last7') {
       setPdfFrom(addDays(today, -6));
       setPdfTo(today);
     } else if (preset === 'month') {
       setPdfFrom(monthStart(today));
       setPdfTo(today);
-    } else if (preset === 'last_month') {
-      const lm = getLastMonthRange(today);
-      setPdfFrom(lm.from);
-      setPdfTo(lm.to);
     }
   };
 
-  const handleOpenPdf = (autoPrint: boolean = true) => {
+  const handleOpenPdf = () => {
     if (!pdfFrom || !pdfTo) {
       toast.error('Please select both from and to dates');
       return;
@@ -90,15 +69,13 @@ export default function SettingsPage() {
     if (pdfPreset === 'today') title = 'Daily Sales Report (Today)';
     else if (pdfPreset === 'yesterday') title = `Daily Sales Report (${shortDate(from)})`;
     else if (pdfPreset === 'week') title = 'Weekly Sales Report';
-    else if (pdfPreset === 'last7') title = '7-Day Sales Report';
     else if (pdfPreset === 'month') title = 'Monthly Sales Report';
-    else if (pdfPreset === 'last_month') title = 'Last Month Sales Report';
     else if (from === to) title = `Daily Sales Report (${shortDate(from)})`;
     else title = `Sales Statement (${shortDate(from)} - ${shortDate(to)})`;
 
     const url = `/print/sales-report?from=${from}&to=${to}&title=${encodeURIComponent(
       title
-    )}${autoPrint ? '&auto=1' : ''}`;
+    )}&auto=1`;
     window.open(url, '_blank');
   };
 
@@ -271,23 +248,21 @@ export default function SettingsPage() {
               {/* Period Quick Selection Pills */}
               <div>
                 <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 mb-2 block">
-                  Select Sales Period
+                  Select Period
                 </label>
                 <div className="flex flex-wrap gap-1.5">
                   {([
-                    { id: 'today', label: 'Today (Daily)' },
+                    { id: 'today', label: 'Today' },
                     { id: 'yesterday', label: 'Yesterday' },
                     { id: 'week', label: 'This Week' },
-                    { id: 'last7', label: 'Last 7 Days' },
                     { id: 'month', label: 'This Month' },
-                    { id: 'last_month', label: 'Last Month' },
                     { id: 'custom', label: 'Custom' },
                   ] as const).map((item) => (
                     <button
                       key={item.id}
                       type="button"
                       onClick={() => applyPreset(item.id)}
-                      className={`text-xs px-2.5 py-1.5 rounded-md font-medium transition-colors ${
+                      className={`text-xs px-3 py-1.5 rounded-md font-medium transition-colors ${
                         pdfPreset === item.id
                           ? 'bg-teal-700 text-white shadow-xs dark:bg-teal-600'
                           : 'bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
@@ -299,39 +274,35 @@ export default function SettingsPage() {
                 </div>
               </div>
 
-              {/* Date Inputs */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                <div>
-                  <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1 block">
-                    From Date
-                  </label>
-                  <Input
-                    type="date"
-                    value={pdfFrom}
-                    onChange={(e) => {
-                      setPdfFrom(e.target.value);
-                      setPdfPreset('custom');
-                    }}
-                    className="text-xs h-9"
-                    required
-                  />
+              {/* Date Inputs shown when Custom is selected */}
+              {pdfPreset === 'custom' && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                  <div>
+                    <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1 block">
+                      From Date
+                    </label>
+                    <Input
+                      type="date"
+                      value={pdfFrom}
+                      onChange={(e) => setPdfFrom(e.target.value)}
+                      className="text-xs h-9"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1 block">
+                      To Date
+                    </label>
+                    <Input
+                      type="date"
+                      value={pdfTo}
+                      onChange={(e) => setPdfTo(e.target.value)}
+                      className="text-xs h-9"
+                      required
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1 block">
-                    To Date
-                  </label>
-                  <Input
-                    type="date"
-                    value={pdfTo}
-                    onChange={(e) => {
-                      setPdfTo(e.target.value);
-                      setPdfPreset('custom');
-                    }}
-                    className="text-xs h-9"
-                    required
-                  />
-                </div>
-              </div>
+              )}
 
               {/* Selected Period Info Banner */}
               <div className="p-3 bg-teal-50/70 dark:bg-teal-950/30 border border-teal-200/60 dark:border-teal-800/40 rounded-lg text-xs space-y-1">
@@ -346,43 +317,19 @@ export default function SettingsPage() {
                       : `${shortDate(pdfFrom) || pdfFrom} — ${shortDate(pdfTo) || pdfTo}`}
                   </span>
                 </div>
-                <p className="text-[11px] text-teal-800/80 dark:text-teal-300/70">
-                  Includes full financial overview, revenue, cost, profit, category breakdown, and itemized sales.
-                </p>
               </div>
 
-              {/* Action Buttons */}
-              <div className="flex flex-col sm:flex-row gap-2.5 pt-1">
+              {/* 1-Click Action Button */}
+              <div className="pt-1">
                 <Button
                   type="button"
                   variant="primary"
-                  onClick={() => handleOpenPdf(true)}
-                  className="flex-1 h-9.5 text-xs font-semibold shadow-xs"
+                  onClick={handleOpenPdf}
+                  className="w-full h-10 text-xs font-semibold shadow-xs"
                 >
                   <Printer className="h-4 w-4 mr-2" />
                   Download Sales Report (PDF)
                 </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => handleOpenPdf(false)}
-                  className="h-9.5 text-xs font-medium"
-                >
-                  <Eye className="h-4 w-4 mr-1.5" />
-                  Preview
-                </Button>
-              </div>
-
-              {/* Subtle Database JSON backup link */}
-              <div className="pt-2 text-center border-t border-slate-100 dark:border-slate-800">
-                <a
-                  href="/api/backup"
-                  download
-                  className="text-[11px] text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 inline-flex items-center gap-1 transition-colors"
-                >
-                  <Download className="h-3 w-3" />
-                  Need raw database copy? Download .json backup
-                </a>
               </div>
             </CardContent>
           </Card>

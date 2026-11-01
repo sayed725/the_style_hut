@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Card, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -27,12 +28,9 @@ import {
 } from 'lucide-react';
 
 export default function ReportsPage() {
-  const [from, setFrom] = React.useState('');
-  const [to, setTo] = React.useState('');
-  const [group, setGroup] = React.useState<'day' | 'week' | 'month'>('day');
-  const [preset, setPreset] = React.useState('month');
-  const [report, setReport] = React.useState<any>(null);
-  const [loading, setLoading] = React.useState(true);
+  const [from, setFrom] = React.useState(() => todayStr());
+  const [to, setTo] = React.useState(() => todayStr());
+  const [preset, setPreset] = React.useState('today');
   const [dateDrawerOpen, setDateDrawerOpen] = React.useState(false);
 
   // Profit by Category search, sort, expand & pagination state
@@ -40,21 +38,11 @@ export default function ReportsPage() {
   const [debouncedCategorySearch, setDebouncedCategorySearch] = React.useState('');
   const [categorySort, setCategorySort] = React.useState('profit_desc');
   const [categoryPage, setCategoryPage] = React.useState(1);
-  const [totalCategories, setTotalCategories] = React.useState(0);
-  const [totalCategoryPages, setTotalCategoryPages] = React.useState(1);
   const [expandedCards, setExpandedCards] = React.useState<Record<string, boolean>>({});
-
-  const abortControllerRef = React.useRef<AbortController | null>(null);
 
   const toggleExpand = (catName: string) => {
     setExpandedCards((prev) => ({ ...prev, [catName]: !prev[catName] }));
   };
-
-  React.useEffect(() => {
-    const today = todayStr();
-    setFrom(monthStart(today));
-    setTo(today);
-  }, []);
 
   // Debounce category search input
   React.useEffect(() => {
@@ -64,6 +52,30 @@ export default function ReportsPage() {
     }, 250);
     return () => clearTimeout(timer);
   }, [categorySearch]);
+
+  const { data: report, isLoading: loading } = useQuery({
+    queryKey: ['report', { from, to, q: debouncedCategorySearch.trim(), sort: categorySort, page: categoryPage }],
+    queryFn: async ({ signal }) => {
+      if (!from || !to) return null;
+      const qs = new URLSearchParams({
+        from,
+        to,
+        group: 'day',
+        q: debouncedCategorySearch.trim(),
+        sort: categorySort,
+        page: String(categoryPage),
+        limit: '10',
+      });
+
+      const res = await fetch(`/api/reports?${qs.toString()}`, { signal });
+      if (!res.ok) throw new Error('Failed to load report');
+      return res.json();
+    },
+    staleTime: 60 * 1000,
+  });
+
+  const totalCategories = report?.pagination?.total || 0;
+  const totalCategoryPages = report?.pagination?.totalPages || 1;
 
   const setDatePreset = (k: string) => {
     const today = todayStr();
@@ -77,6 +89,10 @@ export default function ReportsPage() {
     if (k === 'today') {
       setFrom(today);
       setTo(today);
+    } else if (k === 'yesterday') {
+      const y = addDays(today, -1);
+      setFrom(y);
+      setTo(y);
     } else if (k === 'week') {
       setFrom(ws);
       setTo(today);
@@ -92,61 +108,22 @@ export default function ReportsPage() {
     } else if (k === 'year') {
       setFrom(today.slice(0, 4) + '-01-01');
       setTo(today);
+    } else if (k === 'custom') {
+      if (!from) setFrom(today);
+      if (!to) setTo(today);
     }
   };
 
   const resetFilters = () => {
     const today = todayStr();
-    setPreset('month');
-    setFrom(monthStart(today));
+    setPreset('today');
+    setFrom(today);
     setTo(today);
-    setGroup('day');
     setCategorySearch('');
     setDebouncedCategorySearch('');
     setCategorySort('profit_desc');
     setCategoryPage(1);
   };
-
-  const fetchReport = React.useCallback(() => {
-    if (!from || !to) return;
-
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
-    const controller = new AbortController();
-    abortControllerRef.current = controller;
-
-    setLoading(true);
-    const qs = new URLSearchParams({
-      from,
-      to,
-      group,
-      q: debouncedCategorySearch.trim(),
-      sort: categorySort,
-      page: String(categoryPage),
-      limit: '10',
-    });
-
-    fetch(`/api/reports?${qs.toString()}`, { signal: controller.signal })
-      .then((res) => res.json())
-      .then((data) => {
-        setReport(data);
-        if (data?.pagination) {
-          setTotalCategories(data.pagination.total || 0);
-          setTotalCategoryPages(data.pagination.totalPages || 1);
-        }
-        setLoading(false);
-      })
-      .catch((err) => {
-        if (err.name !== 'AbortError') {
-          setLoading(false);
-        }
-      });
-  }, [from, to, group, debouncedCategorySearch, categorySort, categoryPage]);
-
-  React.useEffect(() => {
-    fetchReport();
-  }, [fetchReport]);
 
   const paginationItems = React.useMemo(() => {
     if (totalCategoryPages <= 7) {
@@ -195,8 +172,10 @@ export default function ReportsPage() {
         return 'Last 30 Days';
       case 'year':
         return 'This Year';
+      case 'custom':
+        return 'Custom';
       default:
-        return 'Custom Date Range';
+        return 'Custom';
     }
   };
 
@@ -209,7 +188,7 @@ export default function ReportsPage() {
             Profit & Sales Reports
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 font-medium mt-0.5 truncate">
-            Financial audit with daily, weekly, and monthly performance drilldowns.
+            Financial audit with sales, category profit, and cost drilldowns.
           </p>
         </div>
       </div>
@@ -228,6 +207,7 @@ export default function ReportsPage() {
             { id: 'last', label: 'Last Month' },
             { id: 'd30', label: 'Last 30 Days' },
             { id: 'year', label: 'This Year' },
+            { id: 'custom', label: 'Custom' },
           ].map((p) => (
             <button
               key={p.id}
@@ -243,53 +223,37 @@ export default function ReportsPage() {
           ))}
         </div>
 
-        {/* Date Inputs & Grouping */}
-        <div className="grid grid-cols-12 gap-3 pt-0.5">
-          <div className="col-span-4">
-            <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">From</label>
-            <Input
-              type="date"
-              value={from}
-              onChange={(e) => {
-                setFrom(e.target.value);
-                setPreset('');
-                setCategoryPage(1);
-              }}
-              className="h-9.5 text-xs sm:text-sm rounded-xl"
-            />
-          </div>
-          <div className="col-span-4">
-            <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">To</label>
-            <Input
-              type="date"
-              value={to}
-              onChange={(e) => {
-                setTo(e.target.value);
-                setPreset('');
-                setCategoryPage(1);
-              }}
-              className="h-9.5 text-xs sm:text-sm rounded-xl"
-            />
-          </div>
-          <div className="col-span-4">
-            <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">Grouping</label>
-            <div className="inline-flex rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-100/80 dark:bg-slate-800/80 p-0.5 w-full h-9.5 items-center">
-              {(['day', 'week', 'month'] as const).map((g) => (
-                <button
-                  key={g}
-                  onClick={() => setGroup(g)}
-                  className={`flex-1 h-8 rounded-lg text-xs font-semibold capitalize transition-all touch-manipulation cursor-pointer ${
-                    group === g
-                      ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs font-bold'
-                      : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
-                  }`}
-                >
-                  {g}
-                </button>
-              ))}
+        {/* Custom Date Pickers - Only appear when preset === 'custom' */}
+        {preset === 'custom' && (
+          <div className="grid grid-cols-2 gap-3 pt-2.5 border-t border-slate-100 dark:border-slate-800">
+            <div>
+              <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">From Date</label>
+              <Input
+                type="date"
+                value={from}
+                onChange={(e) => {
+                  setFrom(e.target.value);
+                  setPreset('custom');
+                  setCategoryPage(1);
+                }}
+                className="h-9.5 text-xs sm:text-sm rounded-xl"
+              />
+            </div>
+            <div>
+              <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">To Date</label>
+              <Input
+                type="date"
+                value={to}
+                onChange={(e) => {
+                  setTo(e.target.value);
+                  setPreset('custom');
+                  setCategoryPage(1);
+                }}
+                className="h-9.5 text-xs sm:text-sm rounded-xl"
+              />
             </div>
           </div>
-        </div>
+        )}
       </Card>
 
       {/* Mobile Compact Filter Trigger (< sm) */}
@@ -302,7 +266,7 @@ export default function ReportsPage() {
                 {getPresetLabel()}
               </span>
               <span className="text-[10px] text-slate-400 block truncate font-medium">
-                {from} to {to} • Group by {group}
+                {from === to ? from : `${from} to ${to}`}
               </span>
             </div>
           </div>
@@ -336,14 +300,16 @@ export default function ReportsPage() {
             <label className="text-xs font-bold uppercase tracking-wider text-slate-500">
               Presets
             </label>
-            <div className="grid grid-cols-3 gap-1.5">
+            <div className="grid grid-cols-3 sm:grid-cols-4 gap-1.5">
               {[
                 { id: 'today', label: 'Today' },
+                { id: 'yesterday', label: 'Yesterday' },
                 { id: 'week', label: 'This Week' },
                 { id: 'month', label: 'This Month' },
                 { id: 'last', label: 'Last Month' },
                 { id: 'd30', label: '30 Days' },
                 { id: 'year', label: 'This Year' },
+                { id: 'custom', label: 'Custom' },
               ].map((p) => (
                 <button
                   key={p.id}
@@ -361,58 +327,37 @@ export default function ReportsPage() {
             </div>
           </div>
 
-          {/* Date Pickers */}
-          <div className="grid grid-cols-2 gap-2 pt-1">
-            <div>
-              <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">From</label>
-              <Input
-                type="date"
-                value={from}
-                onChange={(e) => {
-                  setFrom(e.target.value);
-                  setPreset('');
-                  setCategoryPage(1);
-                }}
-                className="h-9.5 text-xs rounded-xl"
-              />
+          {/* Date Pickers - Only appear when preset === 'custom' */}
+          {preset === 'custom' && (
+            <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+              <div>
+                <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">From Date</label>
+                <Input
+                  type="date"
+                  value={from}
+                  onChange={(e) => {
+                    setFrom(e.target.value);
+                    setPreset('custom');
+                    setCategoryPage(1);
+                  }}
+                  className="h-9.5 text-xs rounded-xl"
+                />
+              </div>
+              <div>
+                <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">To Date</label>
+                <Input
+                  type="date"
+                  value={to}
+                  onChange={(e) => {
+                    setTo(e.target.value);
+                    setPreset('custom');
+                    setCategoryPage(1);
+                  }}
+                  className="h-9.5 text-xs rounded-xl"
+                />
+              </div>
             </div>
-            <div>
-              <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">To</label>
-              <Input
-                type="date"
-                value={to}
-                onChange={(e) => {
-                  setTo(e.target.value);
-                  setPreset('');
-                  setCategoryPage(1);
-                }}
-                className="h-9.5 text-xs rounded-xl"
-              />
-            </div>
-          </div>
-
-          {/* Grouping Selector */}
-          <div className="space-y-1.5 pt-2 border-t border-slate-100 dark:border-slate-800">
-            <label className="text-xs font-bold uppercase tracking-wider text-slate-500">
-              Group Performance By
-            </label>
-            <div className="grid grid-cols-3 gap-1.5">
-              {(['day', 'week', 'month'] as const).map((g) => (
-                <button
-                  key={g}
-                  type="button"
-                  onClick={() => setGroup(g)}
-                  className={`py-2 px-2 text-xs font-semibold rounded-xl border capitalize text-center transition-all cursor-pointer ${
-                    group === g
-                      ? 'bg-teal-700 text-white border-teal-700 dark:bg-teal-600 dark:border-teal-600 shadow-xs'
-                      : 'bg-slate-50 dark:bg-slate-800/60 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
-                  }`}
-                >
-                  {g}
-                </button>
-              ))}
-            </div>
-          </div>
+          )}
         </DialogBody>
 
         <DialogFooter className="flex-row gap-2">
@@ -591,7 +536,7 @@ export default function ReportsPage() {
           <CardHeader className="p-0 pb-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             <div>
               <CardTitle className="text-sm sm:text-base font-bold">
-                Performance Drilldown ({group})
+                Performance Drilldown
               </CardTitle>
               <p className="text-xs text-slate-500 mt-0.5">
                 Timeline comparing revenue, cost, and net profit.

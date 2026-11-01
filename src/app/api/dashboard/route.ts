@@ -67,7 +67,7 @@ export async function GET() {
   const weekStartDay = process.env.WEEK_START !== undefined ? Number(process.env.WEEK_START) : 6;
   const ws = weekStart(t, weekStartDay);
   const ms = monthStart(t);
-  const from30 = addDays(t, -29);
+  const fromWeek = addDays(t, -6);
 
   const [
     dailyRows,
@@ -80,7 +80,7 @@ export async function GET() {
     inventoryRes,
     recentRes,
   ] = await Promise.all([
-    getDaily(from30, t),
+    getDaily(fromWeek, t),
     getSummary(t, t),
     getSummary(ws, t),
     getSummary(ms, t),
@@ -98,11 +98,14 @@ export async function GET() {
   ]);
 
   const byDate = new Map(dailyRows.map((r: any) => [r.date, r]));
-  const series: { date: string; revenue: number; profit: number }[] = [];
-  for (let d = from30; d <= t; d = addDays(d, 1)) {
+  const series: { date: string; label: string; revenue: number; profit: number }[] = [];
+  for (let d = fromWeek; d <= t; d = addDays(d, 1)) {
     const r: any = byDate.get(d);
+    const dObj = new Date(d + 'T00:00:00Z');
+    const dayLabel = dObj.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', timeZone: 'UTC' });
     series.push({
       date: d,
+      label: dayLabel,
       revenue: r ? Number(r.revenue) : 0,
       profit: r ? r2(Number(r.revenue) - Number(r.cost)) : 0,
     });

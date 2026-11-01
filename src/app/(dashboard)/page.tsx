@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import Link from 'next/link';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -46,12 +47,12 @@ function DashboardSkeleton() {
         ))}
       </div>
 
-      {/* Sales & Profit Chart Skeleton */}
+      {/* Weekly Sales & Profit Chart Skeleton */}
       <Card className="p-5 animate-pulse">
         <div className="flex flex-row items-center justify-between pb-4">
           <div className="space-y-1.5">
             <div className="h-5 w-44 rounded bg-slate-200/70 dark:bg-slate-800/70" />
-            <div className="h-3.5 w-56 rounded bg-slate-100 dark:bg-slate-800/50" />
+            <div className="h-3.5 w-44 rounded bg-slate-100 dark:bg-slate-800/50" />
           </div>
           <div className="h-4 w-28 rounded bg-slate-100 dark:bg-slate-800/50" />
         </div>
@@ -85,30 +86,27 @@ function DashboardSkeleton() {
 }
 
 export default function DashboardPage() {
-  const [data, setData] = React.useState<any>(null);
-  const [loading, setLoading] = React.useState(true);
+  const queryClient = useQueryClient();
   const [restockProduct, setRestockProduct] = React.useState<any>(null);
 
-  const fetchDashboard = () => {
-    fetch('/api/dashboard')
-      .then((res) => {
-        if (!res.ok) throw new Error('Unauthorized');
-        return res.json();
-      })
-      .then((d) => {
-        setData(d);
-        setLoading(false);
-      })
-      .catch(() => {
-        setLoading(false);
-      });
+  const { data, isLoading } = useQuery({
+    queryKey: ['dashboard'],
+    queryFn: async () => {
+      const res = await fetch('/api/dashboard');
+      if (!res.ok) throw new Error('Unauthorized');
+      return res.json();
+    },
+    staleTime: 30 * 1000,
+  });
+
+  const handleRestockSuccess = () => {
+    queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+    queryClient.invalidateQueries({ queryKey: ['products'] });
+    queryClient.invalidateQueries({ queryKey: ['sales'] });
+    queryClient.invalidateQueries({ queryKey: ['report'] });
   };
 
-  React.useEffect(() => {
-    fetchDashboard();
-  }, []);
-
-  if (loading) {
+  if (isLoading && !data) {
     return <DashboardSkeleton />;
   }
 
@@ -276,12 +274,12 @@ export default function DashboardPage() {
         </Card>
       </div>
 
-      {/* 30-Day Sales & Profit Chart */}
+      {/* Weekly Sales & Profit Chart */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between pb-2">
           <div>
             <CardTitle>Sales & Profit Overview</CardTitle>
-            <p className="text-xs text-slate-500 font-medium mt-0.5">Last 30 days daily performance</p>
+            <p className="text-xs text-slate-500 font-medium mt-0.5">Last 7 days weekly performance</p>
           </div>
           <div className="flex items-center gap-3 text-xs font-semibold text-slate-500">
             <span className="inline-flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-xs bg-slate-300 dark:bg-slate-700" /> Revenue</span>
@@ -431,7 +429,7 @@ export default function DashboardPage() {
         product={restockProduct}
         open={!!restockProduct}
         onOpenChange={(open) => !open && setRestockProduct(null)}
-        onSuccess={fetchDashboard}
+        onSuccess={handleRestockSuccess}
       />
     </div>
   );
