@@ -11,7 +11,6 @@ if (connectionString && connectionString.includes('sslmode=require') && !connect
 }
 
 declare global {
-  // eslint-disable-next-line no-var
   var __dbPool: Pool | undefined;
 }
 
@@ -99,7 +98,11 @@ export async function initDb() {
         CREATE INDEX IF NOT EXISTS idx_sales_date ON sales(sold_date);
         CREATE INDEX IF NOT EXISTS idx_sales_product ON sales(product_id);
         CREATE INDEX IF NOT EXISTS idx_sales_payment_method ON sales(payment_method);
+        CREATE INDEX IF NOT EXISTS idx_sales_date_pay ON sales(sold_date, payment_method);
         CREATE INDEX IF NOT EXISTS idx_products_active ON products(active);
+        CREATE INDEX IF NOT EXISTS idx_products_active_qty ON products(active, quantity);
+        CREATE INDEX IF NOT EXISTS idx_products_active_cat ON products(active, category);
+        CREATE INDEX IF NOT EXISTS idx_products_low_stock ON products(active, low_stock, quantity);
       `);
       isInitialized = true;
     } finally {

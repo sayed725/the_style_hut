@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import { Plus_Jakarta_Sans, JetBrains_Mono } from 'next/font/google';
 import { Toaster } from '@/components/ui/sonner';
 import { QueryProvider } from '@/components/providers/query-provider';
+import { ThemeProvider } from '@/components/providers/theme-provider';
 import './globals.css';
 
 const jakarta = Plus_Jakarta_Sans({
@@ -31,10 +32,17 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${jakarta.variable} ${mono.variable} h-full antialiased`}>
-      <body className="min-h-full font-sans bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 selection:bg-teal-500/20 selection:text-teal-900">
+    <html lang="en" className={`${jakarta.variable} ${mono.variable} h-full antialiased`} suppressHydrationWarning>
+      <body className="min-h-full font-sans bg-slate-100 text-slate-900 dark:bg-slate-950 dark:text-slate-100 selection:bg-teal-500/20 selection:text-teal-900">
         <QueryProvider>
-          {children}
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="system"
+            enableSystem
+            disableTransitionOnChange
+          >
+            {children}
+          </ThemeProvider>
         </QueryProvider>
         <Toaster />
       </body>

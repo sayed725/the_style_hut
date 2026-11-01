@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { LayoutDashboard, ShoppingCart, Package, ReceiptText, BarChart3, Settings, LogOut } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Button } from '@/lib/../components/ui/button';
+import { Button } from '@/components/ui/button';
 
 interface SidebarProps {
   username?: string;

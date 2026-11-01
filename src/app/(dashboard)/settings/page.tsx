@@ -14,12 +14,28 @@ import {
   Calendar,
   Eye,
   EyeOff,
+  Moon,
+  Sun,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useTheme } from 'next-themes';
 import { todayStr, addDays, monthStart, shortDate } from '@/lib/format';
 
 export default function SettingsPage() {
   const router = useRouter();
+  const { resolvedTheme, setTheme } = useTheme();
+  const mounted = React.useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false
+  );
+  const isDark = mounted ? resolvedTheme === 'dark' : false;
+
+  const toggleTheme = () => {
+    const nextTheme = resolvedTheme === 'dark' ? 'light' : 'dark';
+    setTheme(nextTheme);
+    toast.success(nextTheme === 'dark' ? 'Switched to Dark Mode' : 'Switched to Light Mode');
+  };
   const [currentPassword, setCurrentPassword] = React.useState('');
   const [newPassword, setNewPassword] = React.useState('');
   const [repeatPassword, setRepeatPassword] = React.useState('');
@@ -129,14 +145,36 @@ export default function SettingsPage() {
 
   return (
     <div className="space-y-6 max-w-4xl">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
-          Settings & Account
-        </h1>
-        <p className="text-xs sm:text-sm text-slate-500 font-medium mt-0.5">
-          Manage your login credentials, download PDF sales reports, and manage system sessions.
-        </p>
+      {/* Header & 1-Click Dark/Light Mode Toggle */}
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
+            Settings & Account
+          </h1>
+          <p className="text-xs sm:text-sm text-slate-500 font-medium mt-0.5">
+            Manage your login credentials, theme appearance, and PDF sales reports.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={toggleTheme}
+          suppressHydrationWarning
+          className="h-10 px-3 sm:px-3.5 flex items-center justify-center gap-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 shadow-xs transition-all cursor-pointer text-xs font-semibold shrink-0"
+          title={mounted && isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+          aria-label={mounted && isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+        >
+          {mounted && isDark ? (
+            <>
+              <Sun className="h-4 w-4 text-amber-500" />
+              <span className="hidden sm:inline">Light Mode</span>
+            </>
+          ) : (
+            <>
+              <Moon className="h-4 w-4 text-teal-700 dark:text-teal-400" />
+              <span className="hidden sm:inline">Dark Mode</span>
+            </>
+          )}
+        </button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -331,6 +369,49 @@ export default function SettingsPage() {
                   Download Sales Report (PDF)
                 </Button>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Theme Appearance Card */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg flex items-center justify-between" suppressHydrationWarning>
+                <span className="flex items-center gap-2">
+                  {mounted && isDark ? (
+                    <Moon className="h-4 w-4 text-teal-400" />
+                  ) : (
+                    <Sun className="h-4 w-4 text-amber-500" />
+                  )}
+                  Theme Appearance
+                </span>
+                <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                  {mounted && isDark ? 'Dark Mode' : 'Light Mode'}
+                </span>
+              </CardTitle>
+              <CardDescription>
+                1-click instant switch between dark mode and light mode.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={toggleTheme}
+                suppressHydrationWarning
+                className="w-full h-10 text-xs font-semibold flex items-center justify-center gap-2 cursor-pointer"
+              >
+                {mounted && isDark ? (
+                  <>
+                    <Sun className="h-4 w-4 text-amber-500" />
+                    Switch to Light Mode
+                  </>
+                ) : (
+                  <>
+                    <Moon className="h-4 w-4 text-teal-700 dark:text-teal-400" />
+                    Switch to Dark Mode
+                  </>
+                )}
+              </Button>
             </CardContent>
           </Card>
 

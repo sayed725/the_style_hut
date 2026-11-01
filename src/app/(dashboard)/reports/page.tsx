@@ -1,14 +1,24 @@
 'use client';
 
 import * as React from 'react';
+import dynamic from 'next/dynamic';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogBody, DialogFooter } from '@/components/ui/dialog';
-import { SalesChart } from '@/components/dashboard/sales-chart';
 import { money, num, pct, profitClass, addDays, todayStr, monthStart, weekStart } from '@/lib/format';
+
+const SalesChart = dynamic(
+  () => import('@/components/dashboard/sales-chart').then((mod) => mod.SalesChart),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="h-64 sm:h-72 w-full rounded-xl bg-slate-100/70 dark:bg-slate-900/60 animate-pulse" />
+    ),
+  }
+);
 import {
   Calendar,
   TrendingUp,

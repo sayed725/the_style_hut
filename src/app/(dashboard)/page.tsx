@@ -2,14 +2,24 @@
 
 import * as React from 'react';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { SalesChart } from '@/components/dashboard/sales-chart';
 import { RestockModal } from '@/components/stock/restock-modal';
 import { money, num, pct, longDate, shortDate, profitClass, variant } from '@/lib/format';
 import { ShoppingCart, AlertCircle, ArrowUpRight } from 'lucide-react';
+
+const SalesChart = dynamic(
+  () => import('@/components/dashboard/sales-chart').then((mod) => mod.SalesChart),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="h-64 sm:h-72 w-full rounded-xl bg-slate-100/70 dark:bg-slate-900/60 animate-pulse" />
+    ),
+  }
+);
 
 function DashboardSkeleton() {
   return (
@@ -105,6 +115,19 @@ export default function DashboardPage() {
     queryClient.invalidateQueries({ queryKey: ['sales'] });
     queryClient.invalidateQueries({ queryKey: ['report'] });
   };
+
+  // Silently warm POS cache in background for 0ms transition to POS
+  React.useEffect(() => {
+    queryClient.prefetchQuery({
+      queryKey: ['products', 'pos', { q: '', category: 'all', sort: 'newest' }],
+      queryFn: async () => {
+        const res = await fetch('/api/products?all=1&in_stock=1&sort=newest');
+        if (!res.ok) throw new Error('Failed to prefetch');
+        return res.json();
+      },
+      staleTime: 15 * 1000,
+    });
+  }, [queryClient]);
 
   if (isLoading && !data) {
     return <DashboardSkeleton />;

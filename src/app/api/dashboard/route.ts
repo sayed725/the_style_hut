@@ -22,15 +22,41 @@ const withProfit = (s: any) => {
   };
 };
 
-async function getSummary(from: string, to: string) {
+async function getAllSummaries(today: string, weekStart: string, monthStart: string) {
   const sql = `
-    SELECT COALESCE(ROUND(SUM(quantity * unit_price)::numeric, 2), 0) AS revenue,
-           COALESCE(ROUND(SUM(quantity * unit_cost)::numeric, 2), 0)  AS cost,
-           COALESCE(SUM(quantity)::int, 0) AS items,
-           COUNT(*)::int AS sales
-    FROM sales WHERE sold_date BETWEEN $1 AND $2`;
-  const { rows } = await query(sql, [from, to]);
-  return rows[0];
+    SELECT
+      -- Today
+      COALESCE(ROUND(SUM(quantity * unit_price) FILTER (WHERE sold_date = $1)::numeric, 2), 0) AS today_revenue,
+      COALESCE(ROUND(SUM(quantity * unit_cost)  FILTER (WHERE sold_date = $1)::numeric, 2), 0) AS today_cost,
+      COALESCE(SUM(quantity) FILTER (WHERE sold_date = $1)::int, 0) AS today_items,
+      COUNT(*) FILTER (WHERE sold_date = $1)::int AS today_sales,
+
+      -- Week
+      COALESCE(ROUND(SUM(quantity * unit_price) FILTER (WHERE sold_date BETWEEN $2 AND $1)::numeric, 2), 0) AS week_revenue,
+      COALESCE(ROUND(SUM(quantity * unit_cost)  FILTER (WHERE sold_date BETWEEN $2 AND $1)::numeric, 2), 0) AS week_cost,
+      COALESCE(SUM(quantity) FILTER (WHERE sold_date BETWEEN $2 AND $1)::int, 0) AS week_items,
+      COUNT(*) FILTER (WHERE sold_date BETWEEN $2 AND $1)::int AS week_sales,
+
+      -- Month
+      COALESCE(ROUND(SUM(quantity * unit_price) FILTER (WHERE sold_date BETWEEN $3 AND $1)::numeric, 2), 0) AS month_revenue,
+      COALESCE(ROUND(SUM(quantity * unit_cost)  FILTER (WHERE sold_date BETWEEN $3 AND $1)::numeric, 2), 0) AS month_cost,
+      COALESCE(SUM(quantity) FILTER (WHERE sold_date BETWEEN $3 AND $1)::int, 0) AS month_items,
+      COUNT(*) FILTER (WHERE sold_date BETWEEN $3 AND $1)::int AS month_sales,
+
+      -- All Time
+      COALESCE(ROUND(SUM(quantity * unit_price)::numeric, 2), 0) AS all_revenue,
+      COALESCE(ROUND(SUM(quantity * unit_cost)::numeric, 2), 0)  AS all_cost,
+      COALESCE(SUM(quantity)::int, 0) AS all_items,
+      COUNT(*)::int AS all_sales
+    FROM sales`;
+  const { rows } = await query(sql, [today, weekStart, monthStart]);
+  const r = (rows[0] || {}) as Record<string, number | string>;
+  return {
+    today: { revenue: r.today_revenue, cost: r.today_cost, items: r.today_items, sales: r.today_sales },
+    week: { revenue: r.week_revenue, cost: r.week_cost, items: r.week_items, sales: r.week_sales },
+    month: { revenue: r.month_revenue, cost: r.month_cost, items: r.month_items, sales: r.month_sales },
+    all: { revenue: r.all_revenue, cost: r.all_cost, items: r.all_items, sales: r.all_sales },
+  };
 }
 
 async function getDaily(from: string, to: string) {
@@ -71,20 +97,14 @@ export async function GET() {
 
   const [
     dailyRows,
-    summaryToday,
-    summaryWeek,
-    summaryMonth,
-    summaryAll,
+    summaries,
     topProducts,
     lowStockRes,
     inventoryRes,
     recentRes,
   ] = await Promise.all([
     getDaily(fromWeek, t),
-    getSummary(t, t),
-    getSummary(ws, t),
-    getSummary(ms, t),
-    getSummary('0000-01-01', t),
+    getAllSummaries(t, ws, ms),
     getByProduct(ms, t),
     query('SELECT id, name, size, color, quantity, low_stock FROM products WHERE active = 1 AND quantity <= low_stock ORDER BY quantity ASC, name LIMIT 12'),
     query(`SELECT COUNT(*)::int AS products,
@@ -96,6 +116,11 @@ export async function GET() {
                    ROUND((quantity * (unit_price - unit_cost))::numeric, 2) AS profit
             FROM sales ORDER BY id DESC LIMIT 8`),
   ]);
+
+  const summaryToday = summaries.today;
+  const summaryWeek = summaries.week;
+  const summaryMonth = summaries.month;
+  const summaryAll = summaries.all;
 
   const byDate = new Map(dailyRows.map((r: any) => [r.date, r]));
   const series: { date: string; label: string; revenue: number; profit: number }[] = [];
