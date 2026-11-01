@@ -45,20 +45,22 @@ export async function GET(req: Request) {
   const offset = (page - 1) * limit;
 
   let categoryOrderBy = 'profit DESC, category ASC';
-  if (sort === 'profit_asc') {
+  if (sort === 'profit_asc' || sort === 'profit_low') {
     categoryOrderBy = 'profit ASC, category ASC';
-  } else if (sort === 'revenue_desc') {
+  } else if (sort === 'profit_desc' || sort === 'profit_high') {
+    categoryOrderBy = 'profit DESC, category ASC';
+  } else if (sort === 'revenue_desc' || sort === 'revenue_high') {
     categoryOrderBy = 'revenue DESC, category ASC';
-  } else if (sort === 'revenue_asc') {
+  } else if (sort === 'revenue_asc' || sort === 'revenue_low') {
     categoryOrderBy = 'revenue ASC, category ASC';
+  } else if (sort === 'margin_desc' || sort === 'margin_high') {
+    categoryOrderBy = 'margin DESC, profit DESC';
+  } else if (sort === 'margin_asc' || sort === 'margin_low') {
+    categoryOrderBy = 'margin ASC, profit ASC';
   } else if (sort === 'qty_desc') {
     categoryOrderBy = 'qty DESC, category ASC';
   } else if (sort === 'qty_asc') {
     categoryOrderBy = 'qty ASC, category ASC';
-  } else if (sort === 'margin_desc') {
-    categoryOrderBy = 'margin DESC, profit DESC';
-  } else if (sort === 'margin_asc') {
-    categoryOrderBy = 'margin ASC, profit ASC';
   } else if (sort === 'name_asc') {
     categoryOrderBy = 'category ASC';
   } else if (sort === 'name_desc') {

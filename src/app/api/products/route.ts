@@ -19,21 +19,22 @@ export async function GET(req: Request) {
   const onlyInStock = searchParams.get('in_stock') === '1';
   const sort = String(searchParams.get('sort') || 'newest').toLowerCase();
 
-  let orderBy = 'id DESC';
-  if (sort === 'name_asc') {
+  const priceCol = `COALESCE(NULLIF(CAST(selling_price AS NUMERIC), 0), CAST(purchase_price AS NUMERIC), 0)`;
+  let orderBy = 'created_at DESC, id DESC';
+  if (sort === 'oldest') {
+    orderBy = 'created_at ASC, id ASC';
+  } else if (sort === 'stock_high' || sort === 'stock_desc' || sort === 'stock_hight') {
+    orderBy = 'CAST(quantity AS INTEGER) DESC, id DESC';
+  } else if (sort === 'stock_low' || sort === 'stock_asc') {
+    orderBy = 'CAST(quantity AS INTEGER) ASC, id DESC';
+  } else if (sort === 'price_high' || sort === 'price_desc') {
+    orderBy = `${priceCol} DESC, id DESC`;
+  } else if (sort === 'price_low' || sort === 'price_asc') {
+    orderBy = `${priceCol} ASC, id DESC`;
+  } else if (sort === 'name_asc') {
     orderBy = 'name ASC, id DESC';
   } else if (sort === 'name_desc') {
     orderBy = 'name DESC, id DESC';
-  } else if (sort === 'stock_desc') {
-    orderBy = 'quantity DESC, id DESC';
-  } else if (sort === 'stock_asc') {
-    orderBy = 'quantity ASC, id DESC';
-  } else if (sort === 'price_desc') {
-    orderBy = 'selling_price DESC, id DESC';
-  } else if (sort === 'price_asc') {
-    orderBy = 'selling_price ASC, id DESC';
-  } else if (sort === 'oldest') {
-    orderBy = 'id ASC';
   }
 
   let countSql = `SELECT COUNT(*)::int AS total, COALESCE(SUM(quantity)::int, 0) AS total_pieces FROM products WHERE active = 1`;

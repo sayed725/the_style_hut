@@ -46,7 +46,7 @@ export default function ReportsPage() {
   // Profit by Category search, sort, expand & pagination state
   const [categorySearch, setCategorySearch] = React.useState('');
   const [debouncedCategorySearch, setDebouncedCategorySearch] = React.useState('');
-  const [categorySort, setCategorySort] = React.useState('profit_desc');
+  const [categorySort, setCategorySort] = React.useState('profit_high');
   const [categoryPage, setCategoryPage] = React.useState(1);
   const [expandedCards, setExpandedCards] = React.useState<Record<string, boolean>>({});
 
@@ -131,7 +131,7 @@ export default function ReportsPage() {
     setTo(today);
     setCategorySearch('');
     setDebouncedCategorySearch('');
-    setCategorySort('profit_desc');
+    setCategorySort('profit_high');
     setCategoryPage(1);
   };
 
@@ -587,26 +587,27 @@ export default function ReportsPage() {
         </CardHeader>
 
         {/* Toolbar: Category Search & Sort */}
-        <div className="p-3 sm:p-4 border-b border-slate-100 dark:border-slate-800 space-y-2.5 bg-slate-50/40 dark:bg-slate-900/40">
-          <div className="flex flex-wrap items-center gap-2">
+        <div className="p-2.5 sm:p-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-900/40">
+          <div className="flex items-center gap-2 w-full">
             {/* Search Category Input */}
-            <div className="relative flex-1 min-w-[180px]">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+            <div className="relative flex-1 min-w-0">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
               <Input
                 type="search"
-                placeholder="Search category name..."
+                placeholder="Search categories..."
                 value={categorySearch}
                 onChange={(e) => setCategorySearch(e.target.value)}
-                className="pl-8.5 pr-8 h-9 text-xs sm:text-sm rounded-xl bg-white dark:bg-slate-900"
+                className="pl-8 sm:pl-9 pr-8 h-9 sm:h-10 text-xs sm:text-sm rounded-xl bg-white dark:bg-slate-900 shadow-xs truncate"
               />
               {categorySearch && (
                 <button
+                  type="button"
                   onClick={() => {
                     setCategorySearch('');
                     setDebouncedCategorySearch('');
                     setCategoryPage(1);
                   }}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-0.5 cursor-pointer"
                   aria-label="Clear search"
                 >
                   <X className="h-3.5 w-3.5" />
@@ -615,28 +616,25 @@ export default function ReportsPage() {
             </div>
 
             {/* Sort Dropdown */}
-            <div className="relative shrink-0">
+            <div className="relative shrink-0 w-[122px] sm:w-auto">
               <select
                 value={categorySort}
                 onChange={(e) => {
                   setCategorySort(e.target.value);
                   setCategoryPage(1);
                 }}
-                className="h-9 pl-7 pr-7 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-teal-500 cursor-pointer appearance-none shadow-xs"
+                aria-label="Sort categories"
+                className="w-full h-9 sm:h-10 pl-6 sm:pl-8 pr-5 sm:pr-7 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-teal-500 cursor-pointer appearance-none shadow-xs truncate"
               >
-                <option value="profit_desc">Profit: High to Low</option>
-                <option value="profit_asc">Profit: Low to High</option>
-                <option value="revenue_desc">Revenue: High to Low</option>
-                <option value="revenue_asc">Revenue: Low to High</option>
-                <option value="qty_desc">Units Sold: High to Low</option>
-                <option value="qty_asc">Units Sold: Low to High</option>
-                <option value="margin_desc">Margin: High to Low</option>
-                <option value="margin_asc">Margin: Low to High</option>
-                <option value="name_asc">Category: A to Z</option>
-                <option value="name_desc">Category: Z to A</option>
+                <option value="profit_high">Profit High</option>
+                <option value="profit_low">Profit Low</option>
+                <option value="revenue_high">Revenue High</option>
+                <option value="revenue_low">Revenue Low</option>
+                <option value="margin_high">Margin High</option>
+                <option value="margin_low">Margin Low</option>
               </select>
-              <ArrowUpDown className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-slate-400 pointer-events-none" />
-              <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
+              <ArrowUpDown className="absolute left-2 sm:left-2.5 top-1/2 -translate-y-1/2 h-3 w-3 sm:h-3.5 sm:w-3.5 text-slate-400 pointer-events-none" />
+              <ChevronDown className="absolute right-1.5 sm:right-2 top-1/2 -translate-y-1/2 h-3 w-3 sm:h-3.5 sm:w-3.5 text-slate-400 pointer-events-none" />
             </div>
           </div>
         </div>

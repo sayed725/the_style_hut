@@ -185,54 +185,54 @@ export default function InventoryPage() {
       </div>
 
       {/* Search, Sort & Category Filter Toolbar */}
-      <div className="space-y-3">
-        <div className="flex flex-wrap items-center gap-2">
+      <div className="space-y-2.5 sm:space-y-3">
+        <div className="flex items-center gap-2 w-full">
           {/* Search Input */}
-          <div className="relative flex-1 min-w-[220px]">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+          <div className="relative flex-1 min-w-0">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 sm:h-4 sm:w-4 text-slate-400 pointer-events-none" />
             <Input
               type="search"
-              placeholder="Search by name, SKU, category, size..."
+              placeholder="Search products..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-10 pr-9 h-10 shadow-xs rounded-xl text-xs sm:text-sm"
+              className="pl-8 sm:pl-9 pr-8 h-10 shadow-xs rounded-xl text-xs sm:text-sm truncate"
             />
             {search && (
               <button
+                type="button"
                 onClick={() => {
                   setSearch('');
                   setDebouncedSearch('');
                   setPage(1);
                 }}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 cursor-pointer"
                 aria-label="Clear search"
               >
-                <X className="h-4 w-4" />
+                <X className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
               </button>
             )}
           </div>
 
           {/* Sort Dropdown */}
-          <div className="relative shrink-0">
+          <div className="relative shrink-0 w-[116px] sm:w-auto">
             <select
               value={sort}
               onChange={(e) => {
                 setSort(e.target.value);
                 setPage(1);
               }}
-              className="h-10 pl-8 pr-7 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-teal-500 cursor-pointer appearance-none shadow-xs"
+              aria-label="Sort products"
+              className="w-full h-10 pl-6 sm:pl-8 pr-5 sm:pr-7 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-teal-500 cursor-pointer appearance-none shadow-xs truncate"
             >
-              <option value="newest">Newest First</option>
-              <option value="name_asc">Name: A to Z</option>
-              <option value="name_desc">Name: Z to A</option>
-              <option value="stock_desc">Stock: High to Low</option>
-              <option value="stock_asc">Stock: Low to High</option>
-              <option value="price_desc">Price: High to Low</option>
-              <option value="price_asc">Price: Low to High</option>
-              <option value="oldest">Oldest First</option>
+              <option value="newest">Newest</option>
+              <option value="oldest">Oldest</option>
+              <option value="stock_high">Stock High</option>
+              <option value="stock_low">Stock Low</option>
+              <option value="price_high">Price High</option>
+              <option value="price_low">Price Low</option>
             </select>
-            <ArrowUpDown className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
-            <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
+            <ArrowUpDown className="absolute left-2 sm:left-2.5 top-1/2 -translate-y-1/2 h-3 w-3 sm:h-3.5 sm:w-3.5 text-slate-400 pointer-events-none" />
+            <ChevronDown className="absolute right-1.5 sm:right-2 top-1/2 -translate-y-1/2 h-3 w-3 sm:h-3.5 sm:w-3.5 text-slate-400 pointer-events-none" />
           </div>
         </div>
 
