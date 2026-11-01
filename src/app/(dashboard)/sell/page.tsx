@@ -17,6 +17,7 @@ export default function SellPage() {
   const [debouncedSearch, setDebouncedSearch] = React.useState('');
   const [selectedCategory, setSelectedCategory] = React.useState('all');
   const [sort, setSort] = React.useState('newest');
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [selectedProduct, setSelectedProduct] = React.useState<any>(null);
 
   // Debounce search input for backend queries
@@ -49,6 +50,7 @@ export default function SellPage() {
     staleTime: 15 * 1000,
   });
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const products: any[] = React.useMemo(() => {
     if (data && Array.isArray(data.products)) return data.products;
     if (Array.isArray(data)) return data;
@@ -68,6 +70,7 @@ export default function SellPage() {
   const totalInStock: number =
     data?.overallTotalPieces ||
     data?.totalPieces ||
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     products.reduce((acc: number, p: any) => acc + (p.quantity || 0), 0);
 
   const handleSaleSuccess = () => {
@@ -117,7 +120,6 @@ export default function SellPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-10 pr-9 h-11 text-xs sm:text-sm shadow-xs rounded-xl"
-              autoFocus
             />
             {search && (
               <button
