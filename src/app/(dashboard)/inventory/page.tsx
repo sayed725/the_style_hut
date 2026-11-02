@@ -155,7 +155,7 @@ export default function InventoryPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-5">
       {/* Page Header */}
       <div className="flex items-center justify-between gap-3 min-w-0">
         <div className="min-w-0 flex-1">
@@ -238,7 +238,7 @@ export default function InventoryPage() {
 
         {/* Category Pills (Horizontal scrolling on touch devices) */}
         {categories.length > 1 && (
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none select-none">
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-none select-none">
             {categories.map((cat) => (
               <button
                 key={cat}
@@ -259,8 +259,10 @@ export default function InventoryPage() {
         )}
       </div>
 
-      {/* Desktop Table View (>= md screens) */}
-      <Card className="hidden md:block overflow-hidden shadow-xs">
+      {/* Inventory Items Content (Desktop Table / Mobile Stack) */}
+      <div>
+        {/* Desktop Table View (>= md screens) */}
+        <Card className="hidden md:block overflow-hidden shadow-xs">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead className="bg-slate-50 dark:bg-slate-800/50 text-[11px] uppercase tracking-wider text-slate-500 border-b border-slate-200 dark:border-slate-800 font-semibold select-none">
@@ -407,10 +409,11 @@ export default function InventoryPage() {
           </Card>
         )}
       </div>
+      </div>
 
       {/* Backend Pagination Bar (Visible only if more than 10 products exist) */}
       {total > 10 && (
-        <div className="flex items-center justify-center gap-1.5 sm:gap-2 pt-3 text-xs text-slate-500 font-medium max-w-full">
+        <div className="flex items-center justify-center gap-1.5 sm:gap-2 pt-1 sm:pt-2 text-xs text-slate-500 font-medium max-w-full">
           <Button
             size="sm"
             variant="outline"

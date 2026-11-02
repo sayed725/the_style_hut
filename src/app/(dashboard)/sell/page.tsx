@@ -108,7 +108,7 @@ export default function SellPage() {
   };
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4 sm:space-y-5">
       {/* Header */}
       <div className="flex items-center justify-between gap-3 min-w-0">
         <div className="min-w-0 flex-1">
@@ -184,8 +184,8 @@ export default function SellPage() {
         </div>
 
         {/* Category Pills (Horizontal scrolling on touch devices) */}
-        {categories.length > 2 && (
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none select-none">
+        {categories.length > 1 && (
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-none select-none">
             {categories.map((cat) => (
               <button
                 key={cat}

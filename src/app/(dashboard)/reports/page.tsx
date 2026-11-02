@@ -570,17 +570,12 @@ export default function ReportsPage() {
 
       {/* Profit By Category Card with Backend Search, Sort & Pagination */}
       <Card className="overflow-hidden shadow-xs rounded-2xl border border-slate-200/80 dark:border-slate-800">
-        <CardHeader className="py-3.5 px-4 sm:px-5 border-b border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5">
-          <div>
-            <CardTitle className="text-sm sm:text-base font-bold flex items-center gap-2">
-              <Layers className="h-4 w-4 text-teal-600 dark:text-teal-400" />
-              Profit by Category
-            </CardTitle>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Breakdown of product categories ranked by earnings, sales, and profit margins.
-            </p>
-          </div>
-          <Badge variant="outline" className="text-xs font-semibold self-start sm:self-auto shrink-0">
+        <CardHeader className="py-3.5 px-4 sm:px-5 border-b border-slate-100 dark:border-slate-800 flex flex-row items-center justify-between gap-2">
+          <CardTitle className="text-sm sm:text-base font-bold flex items-center gap-2">
+            <Layers className="h-4 w-4 text-teal-600 dark:text-teal-400" />
+            <span>Profit by Category</span>
+          </CardTitle>
+          <Badge variant="outline" className="text-xs font-semibold shrink-0">
             <span className="text-teal-600 dark:text-teal-400 font-bold mr-1">{totalCategories}</span>
             {totalCategories === 1 ? 'category' : 'categories'}
           </Badge>
@@ -594,7 +589,7 @@ export default function ReportsPage() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
               <Input
                 type="search"
-                placeholder="Search categories..."
+                placeholder="Name..."
                 value={categorySearch}
                 onChange={(e) => setCategorySearch(e.target.value)}
                 className="pl-8 sm:pl-9 pr-8 h-9 sm:h-10 text-xs sm:text-sm rounded-xl bg-white dark:bg-slate-900 shadow-xs truncate"

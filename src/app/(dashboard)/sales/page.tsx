@@ -267,188 +267,189 @@ export default function SalesHistoryPage() {
   };
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4 sm:space-y-5">
       {/* Page Header */}
-      <div className="space-y-1.5">
-        <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
+      <div className="flex items-center justify-between gap-3">
+        <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white truncate">
           Sales History
         </h1>
-        <div>
-          <Badge variant="outline" className="text-xs font-semibold">
-            <span className="text-teal-600 dark:text-teal-400 font-bold mr-1">{total}</span>
-            {total === 1 ? 'sale' : 'sales'}
-          </Badge>
-        </div>
+        <Badge variant="outline" className="text-xs font-semibold shrink-0">
+          <span className="text-teal-600 dark:text-teal-400 font-bold mr-1">{total}</span>
+          {total === 1 ? 'sale' : 'sales'}
+        </Badge>
       </div>
 
-      {/* Desktop / Tablet Filter Toolbar (>= sm) */}
-      <div className="hidden sm:block space-y-2">
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Search Input */}
-          <div className="relative flex-1 min-w-[220px]">
+      {/* Search, Sort & Category Filter Toolbar */}
+      <div className="space-y-2.5 sm:space-y-3">
+        {/* Desktop / Tablet Filter Toolbar (>= sm) */}
+        <div className="hidden sm:block space-y-2">
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Search Input */}
+            <div className="relative flex-1 min-w-[220px]">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+              <Input
+                type="search"
+                placeholder="Search product name, note..."
+                value={search}
+                onChange={(e) => updateSearch(e.target.value)}
+                className="pl-9 pr-8 h-9.5 text-xs sm:text-sm rounded-xl"
+              />
+              {search && (
+                <button
+                  onClick={() => updateSearch('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
+                  aria-label="Clear search"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
+
+            {/* Date Presets Dropdown */}
+            <div className="relative shrink-0">
+              <select
+                value={preset}
+                onChange={(e) => setDatePreset(e.target.value)}
+                className="h-9.5 pl-8 pr-7 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-teal-500 cursor-pointer appearance-none"
+              >
+                <option value="today">Today</option>
+                <option value="yesterday">Yesterday</option>
+                <option value="week">This Week</option>
+                <option value="month">This Month</option>
+                <option value="d30">Last 30 Days</option>
+                <option value="all">All Time</option>
+                <option value="custom">Custom Range</option>
+              </select>
+              <Calendar className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
+              <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
+            </div>
+
+            {/* Sale Type Dropdown */}
+            <div className="relative shrink-0">
+              <select
+                value={paymentMethod}
+                onChange={(e) => updatePaymentMethod(e.target.value)}
+                className="h-9.5 pl-8 pr-7 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-teal-500 cursor-pointer appearance-none"
+              >
+                <option value="all">All Sale Types</option>
+                <option value="cash">Cash Sales</option>
+                <option value="online">Online Sales</option>
+                <option value="due">Due Sales</option>
+              </select>
+              <Filter className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
+              <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
+            </div>
+
+            {/* Sort Dropdown */}
+            <div className="relative shrink-0">
+              <select
+                value={sort}
+                onChange={(e) => updateSort(e.target.value)}
+                className="h-9.5 pl-8 pr-7 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-teal-500 cursor-pointer appearance-none"
+              >
+                <option value="date_desc">Newest First</option>
+                <option value="date_asc">Oldest First</option>
+                <option value="revenue_desc">Revenue: High to Low</option>
+                <option value="revenue_asc">Revenue: Low to High</option>
+                <option value="profit_desc">Profit: High to Low</option>
+                <option value="profit_asc">Profit: Low to High</option>
+                <option value="payment_method">Sale Type</option>
+              </select>
+              <ArrowUpDown className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
+              <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
+            </div>
+
+            {/* Reset Filters button */}
+            {activeFiltersCount > 0 && (
+              <button
+                onClick={resetFilters}
+                className="h-9.5 px-2.5 text-xs font-semibold text-slate-500 hover:text-slate-900 dark:hover:text-white flex items-center gap-1 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer shrink-0"
+                title="Reset all filters"
+              >
+                <RotateCcw className="h-3 w-3" />
+                Reset
+              </button>
+            )}
+          </div>
+
+          {/* Custom Date Pickers for Desktop if preset === 'custom' */}
+          {preset === 'custom' && (
+            <div className="flex items-center gap-2 pt-1 text-xs text-slate-600 dark:text-slate-400 animate-in fade-in duration-150">
+              <span className="font-semibold text-slate-500">Date Range:</span>
+              <div className="flex items-center gap-1.5">
+                <Input
+                  type="date"
+                  value={from}
+                  onChange={(e) => updateFrom(e.target.value)}
+                  className="h-8.5 text-xs w-36 rounded-lg"
+                />
+                <span className="text-slate-400">to</span>
+                <Input
+                  type="date"
+                  value={to}
+                  onChange={(e) => updateTo(e.target.value)}
+                  className="h-8.5 text-xs w-36 rounded-lg"
+                />
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Mobile Search & Drawer Trigger Bar (< sm) */}
+        <div className="flex sm:hidden items-center gap-2">
+          <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <Input
               type="search"
-              placeholder="Search product name, note..."
+              placeholder="Search sold items..."
               value={search}
               onChange={(e) => updateSearch(e.target.value)}
-              className="pl-9 pr-8 h-9.5 text-xs sm:text-sm rounded-xl"
+              className="pl-9 pr-8 h-10 text-xs rounded-xl"
             />
             {search && (
               <button
                 onClick={() => updateSearch('')}
                 className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
-                aria-label="Clear search"
               >
                 <X className="h-3.5 w-3.5" />
               </button>
             )}
           </div>
-
-          {/* Date Presets Dropdown */}
-          <div className="relative shrink-0">
-            <select
-              value={preset}
-              onChange={(e) => setDatePreset(e.target.value)}
-              className="h-9.5 pl-8 pr-7 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-teal-500 cursor-pointer appearance-none"
-            >
-              <option value="today">Today</option>
-              <option value="yesterday">Yesterday</option>
-              <option value="week">This Week</option>
-              <option value="month">This Month</option>
-              <option value="d30">Last 30 Days</option>
-              <option value="all">All Time</option>
-              <option value="custom">Custom Range</option>
-            </select>
-            <Calendar className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
-            <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
-          </div>
-
-          {/* Sale Type Dropdown */}
-          <div className="relative shrink-0">
-            <select
-              value={paymentMethod}
-              onChange={(e) => updatePaymentMethod(e.target.value)}
-              className="h-9.5 pl-8 pr-7 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-teal-500 cursor-pointer appearance-none"
-            >
-              <option value="all">All Sale Types</option>
-              <option value="cash">Cash Sales</option>
-              <option value="online">Online Sales</option>
-              <option value="due">Due Sales</option>
-            </select>
-            <Filter className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
-            <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
-          </div>
-
-          {/* Sort Dropdown */}
-          <div className="relative shrink-0">
-            <select
-              value={sort}
-              onChange={(e) => updateSort(e.target.value)}
-              className="h-9.5 pl-8 pr-7 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-teal-500 cursor-pointer appearance-none"
-            >
-              <option value="date_desc">Newest First</option>
-              <option value="date_asc">Oldest First</option>
-              <option value="revenue_desc">Revenue: High to Low</option>
-              <option value="revenue_asc">Revenue: Low to High</option>
-              <option value="profit_desc">Profit: High to Low</option>
-              <option value="profit_asc">Profit: Low to High</option>
-              <option value="payment_method">Sale Type</option>
-            </select>
-            <ArrowUpDown className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
-            <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
-          </div>
-
-          {/* Reset Filters button */}
-          {activeFiltersCount > 0 && (
-            <button
-              onClick={resetFilters}
-              className="h-9.5 px-2.5 text-xs font-semibold text-slate-500 hover:text-slate-900 dark:hover:text-white flex items-center gap-1 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer shrink-0"
-              title="Reset all filters"
-            >
-              <RotateCcw className="h-3 w-3" />
-              Reset
-            </button>
-          )}
+          <Button
+            variant="outline"
+            onClick={() => setDrawerOpen(true)}
+            className={`h-10 px-3 rounded-xl gap-1.5 text-xs font-semibold shrink-0 cursor-pointer ${
+              activeFiltersCount > 0 ? 'border-teal-600 text-teal-700 dark:text-teal-400 bg-teal-50/50 dark:bg-teal-950/20' : ''
+            }`}
+          >
+            <SlidersHorizontal className="h-3.5 w-3.5" />
+            <span>Filters</span>
+            {activeFiltersCount > 0 && (
+              <span className="px-1.5 py-0.5 rounded-full bg-teal-600 text-white text-[10px] font-bold leading-none">
+                {activeFiltersCount}
+              </span>
+            )}
+          </Button>
         </div>
 
-        {/* Custom Date Pickers for Desktop if preset === 'custom' */}
-        {preset === 'custom' && (
-          <div className="flex items-center gap-2 pt-1 text-xs text-slate-600 dark:text-slate-400 animate-in fade-in duration-150">
-            <span className="font-semibold text-slate-500">Date Range:</span>
-            <div className="flex items-center gap-1.5">
-              <Input
-                type="date"
-                value={from}
-                onChange={(e) => updateFrom(e.target.value)}
-                className="h-8.5 text-xs w-36 rounded-lg"
-              />
-              <span className="text-slate-400">to</span>
-              <Input
-                type="date"
-                value={to}
-                onChange={(e) => updateTo(e.target.value)}
-                className="h-8.5 text-xs w-36 rounded-lg"
-              />
-            </div>
+        {/* Category Pills (Horizontal scrolling on desktop) */}
+        {categories.length > 1 && (
+          <div className="hidden sm:flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-none select-none">
+            {categories.map((cat) => (
+              <button
+                key={cat}
+                onClick={() => updateCategory(cat)}
+                className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all touch-manipulation capitalize cursor-pointer ${
+                  selectedCategory.toLowerCase() === cat.toLowerCase()
+                    ? 'bg-teal-700 text-white dark:bg-teal-600 shadow-xs'
+                    : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800'
+                }`}
+              >
+                {cat === 'all' ? 'All Items' : cat}
+              </button>
+            ))}
           </div>
         )}
-      </div>
-
-      {/* Category Pills (Horizontal scrolling like inventory page) */}
-      {categories.length > 1 && (
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none select-none">
-          {categories.map((cat) => (
-            <button
-              key={cat}
-              onClick={() => updateCategory(cat)}
-              className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all touch-manipulation capitalize cursor-pointer ${
-                selectedCategory.toLowerCase() === cat.toLowerCase()
-                  ? 'bg-teal-700 text-white dark:bg-teal-600 shadow-xs'
-                  : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800'
-              }`}
-            >
-              {cat === 'all' ? 'All Items' : cat}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {/* Mobile Search & Drawer Trigger Bar (< sm) */}
-      <div className="flex sm:hidden items-center gap-2">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-          <Input
-            type="search"
-            placeholder="Search sold items..."
-            value={search}
-            onChange={(e) => updateSearch(e.target.value)}
-            className="pl-9 pr-8 h-10 text-xs rounded-xl"
-          />
-          {search && (
-            <button
-              onClick={() => updateSearch('')}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
-            >
-              <X className="h-3.5 w-3.5" />
-            </button>
-          )}
-        </div>
-        <Button
-          variant="outline"
-          onClick={() => setDrawerOpen(true)}
-          className={`h-10 px-3 rounded-xl gap-1.5 text-xs font-semibold shrink-0 cursor-pointer ${
-            activeFiltersCount > 0 ? 'border-teal-600 text-teal-700 dark:text-teal-400 bg-teal-50/50 dark:bg-teal-950/20' : ''
-          }`}
-        >
-          <SlidersHorizontal className="h-3.5 w-3.5" />
-          <span>Filters</span>
-          {activeFiltersCount > 0 && (
-            <span className="px-1.5 py-0.5 rounded-full bg-teal-600 text-white text-[10px] font-bold leading-none">
-              {activeFiltersCount}
-            </span>
-          )}
-        </Button>
       </div>
 
       {/* Mobile Filters Drawer (Bottom Sheet) */}
@@ -556,30 +557,7 @@ export default function SalesHistoryPage() {
             </div>
           </div>
 
-          {/* Category Filter */}
-          {categories.length > 1 && (
-            <div className="space-y-1.5 pt-2 border-t border-slate-100 dark:border-slate-800">
-              <label className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                Category
-              </label>
-              <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto pr-1">
-                {categories.map((cat) => (
-                  <button
-                    key={cat}
-                    type="button"
-                    onClick={() => updateCategory(cat)}
-                    className={`py-1.5 px-3 text-xs font-semibold rounded-xl border capitalize transition-all cursor-pointer ${
-                      selectedCategory.toLowerCase() === cat.toLowerCase()
-                        ? 'bg-teal-700 text-white border-teal-700 dark:bg-teal-600 dark:border-teal-600 shadow-xs'
-                        : 'bg-slate-50 dark:bg-slate-800/60 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
-                    }`}
-                  >
-                    {cat === 'all' ? 'All Items' : cat}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
+
 
           {/* Sort By */}
           <div className="space-y-1.5 pt-2 border-t border-slate-100 dark:border-slate-800">
@@ -651,8 +629,10 @@ export default function SalesHistoryPage() {
         </div>
       </div>
 
-      {/* Desktop / Tablet Table View (hidden on mobile) */}
-      <Card className="hidden md:block overflow-hidden shadow-xs">
+      {/* Sales Content View (Desktop Table / Mobile Stack) */}
+      <div>
+        {/* Desktop / Tablet Table View (hidden on mobile) */}
+        <Card className="hidden md:block overflow-hidden shadow-xs">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead className="bg-slate-50 dark:bg-slate-800/50 text-[11px] uppercase tracking-wider text-slate-500 border-b border-slate-200 dark:border-slate-800 font-semibold select-none">
@@ -661,8 +641,8 @@ export default function SalesHistoryPage() {
                 <th className="py-3 px-4">Product Sold</th>
                 <th className="py-3 px-4">Sale Type</th>
                 <th className="py-3 px-4 text-right">Qty</th>
-                <th className="py-3 px-4 text-right">Cost Price</th>
                 <th className="py-3 px-4 text-right">Sale Price</th>
+                <th className="py-3 px-4 text-right">Cost Price</th>
                 <th className="py-3 px-4 text-right">Profit / Margin (%)</th>
                 <th className="py-3 px-4 text-right">Action</th>
               </tr>
@@ -686,10 +666,10 @@ export default function SalesHistoryPage() {
                       <div className="h-4 w-8 bg-slate-200 dark:bg-slate-800 rounded ml-auto" />
                     </td>
                     <td className="py-3.5 px-4 text-right">
-                      <div className="h-4 w-14 bg-slate-200 dark:bg-slate-800 rounded ml-auto" />
+                      <div className="h-4 w-16 bg-slate-200 dark:bg-slate-800 rounded ml-auto" />
                     </td>
                     <td className="py-3.5 px-4 text-right">
-                      <div className="h-4 w-16 bg-slate-200 dark:bg-slate-800 rounded ml-auto" />
+                      <div className="h-4 w-14 bg-slate-200 dark:bg-slate-800 rounded ml-auto" />
                     </td>
                     <td className="py-3.5 px-4 text-right">
                       <div className="h-4 w-14 bg-slate-200 dark:bg-slate-800 rounded ml-auto mb-1" />
@@ -728,13 +708,18 @@ export default function SalesHistoryPage() {
                     <td className="py-3 px-4 text-right font-medium text-slate-700 dark:text-slate-300 font-mono whitespace-nowrap">
                       {num(s.quantity)}
                     </td>
-                    <td className="py-3 px-4 text-right whitespace-nowrap">
-                      <div className="font-mono font-medium text-slate-800 dark:text-slate-200">
-                      {money(s.unit_cost)}
-                      </div>
-                    </td>
                     <td className="py-3 px-4 text-right font-semibold text-slate-900 dark:text-white font-mono whitespace-nowrap">
                       {money(s.revenue)}
+                    </td>
+                    <td className="py-3 px-4 text-right whitespace-nowrap">
+                      <div className="font-mono font-medium text-slate-800 dark:text-slate-200">
+                        {money(s.quantity * s.unit_cost)}
+                      </div>
+                      {s.quantity > 1 && (
+                        <div className="text-[11px] text-slate-400 font-mono">
+                          {money(s.unit_cost)}/pc
+                        </div>
+                      )}
                     </td>
                     <td className="py-3 px-4 text-right whitespace-nowrap">
                       <div className={`font-bold font-mono ${profitClass(s.profit)}`}>
@@ -885,37 +870,42 @@ export default function SalesHistoryPage() {
                     )}
 
                     {/* Pricing & Profit Breakdown Grid */}
-                    <div className="grid grid-cols-2 gap-2 p-2.5 rounded-xl bg-white dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800">
-                      <div>
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                          Purchase Price
-                        </span>
-                        <span className="font-mono font-medium text-slate-700 dark:text-slate-300 text-xs">
-                          {money(s.unit_cost)}
-                        </span>
-                      </div>
+                    <div className="grid grid-cols-3 gap-2 p-2.5 rounded-xl bg-white dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800">
                       <div>
                         <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
                           Sale Price
                         </span>
-                        <span className="font-mono font-medium text-slate-700 dark:text-slate-300 text-xs">
-                          {money(s.unit_price)}
+                        <span className="font-mono font-bold text-slate-900 dark:text-white text-xs block">
+                          {money(s.revenue)}
                         </span>
+                        {s.quantity > 1 && (
+                          <span className="text-[10px] text-slate-400 font-mono block">
+                            {money(s.unit_price)}
+                          </span>
+                        )}
                       </div>
-                      <div className="pt-1.5 border-t border-slate-100 dark:border-slate-700/60">
+                      <div>
                         <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                          Profit / pc
+                          Cost Price
                         </span>
-                        <span className={`font-mono font-bold text-xs ${profitClass(Number(s.unit_price) - Number(s.unit_cost))}`}>
-                          {money(Number(s.unit_price) - Number(s.unit_cost))}
+                        <span className="font-mono font-semibold text-slate-700 dark:text-slate-300 text-xs block">
+                          {money(s.quantity * s.unit_cost)}
                         </span>
+                        {s.quantity > 1 && (
+                          <span className="text-[10px] text-slate-400 font-mono block">
+                            {s.quantity}×{money(s.unit_cost)}
+                          </span>
+                        )}
                       </div>
-                      <div className="pt-1.5 border-t border-slate-100 dark:border-slate-700/60">
+                      <div>
                         <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
                           Margin
                         </span>
-                        <span className={`font-mono font-bold text-xs ${profitClass(s.profit)}`}>
-                          {money(s.profit)} <span className={`text-[10px] ${s.profit >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>({formatProfitPct(s.profit, s.revenue)})</span>
+                        <span className={`font-mono font-extrabold text-xs block ${profitClass(s.profit)}`}>
+                          {money(s.profit)}
+                        </span>
+                        <span className={`text-[10px] font-semibold block ${s.profit >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                          {formatProfitPct(s.profit, s.revenue)}
                         </span>
                       </div>
                     </div>
@@ -947,10 +937,11 @@ export default function SalesHistoryPage() {
           </Card>
         )}
       </div>
+      </div>
 
       {/* Responsive Pagination (works for both Desktop Table and Mobile Cards) */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-center gap-1.5 sm:gap-2 pt-3 pb-2 text-xs text-slate-500 font-medium">
+        <div className="flex items-center justify-center gap-1.5 sm:gap-2 pt-1 sm:pt-2 pb-2 text-xs text-slate-500 font-medium">
           <Button
             size="sm"
             variant="outline"

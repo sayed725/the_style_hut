@@ -34,6 +34,7 @@ interface SaleRecordRow {
   quantity: number;
   unit_price: number;
   unit_cost: number;
+  total_cost?: number;
   revenue: number;
   profit: number;
   payment_method: string;
@@ -126,6 +127,7 @@ export default async function SalesReportPrintPage(props: PageProps) {
       s.quantity,
       s.unit_price,
       s.unit_cost,
+      ROUND((s.quantity * s.unit_cost)::numeric, 2) AS total_cost,
       ROUND((s.quantity * s.unit_price)::numeric, 2) AS revenue,
       ROUND((s.quantity * (s.unit_price - s.unit_cost))::numeric, 2) AS profit,
       s.payment_method,
@@ -254,7 +256,7 @@ export default async function SalesReportPrintPage(props: PageProps) {
               <div className="flex items-center gap-2">
                 <span className="w-2.5 h-6 bg-teal-600 rounded-sm inline-block print:bg-black"></span>
                 <h1 className="text-2xl font-black tracking-tight text-slate-900 print:text-black uppercase">
-                  Cloth Store Manager
+                  The Style Hut
                 </h1>
               </div>
               <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest mt-1">
@@ -441,9 +443,8 @@ export default async function SalesReportPrintPage(props: PageProps) {
                       <th className="py-2 px-2.5">Product</th>
                       <th className="py-2 px-2.5">Category</th>
                       <th className="py-2 px-1.5 text-right">Qty</th>
-                      <th className="py-2 px-2 text-right">Cost</th>
-                      <th className="py-2 px-2 text-right">Sell</th>
-                      <th className="py-2 px-2.5 text-right">Total</th>
+                      <th className="py-2 px-2.5 text-right">Cost</th>
+                      <th className="py-2 px-2.5 text-right">Sell</th>
                       <th className="py-2 px-2.5 text-right">Profit</th>
                       <th className="py-2 px-2 text-center">Method</th>
                     </tr>
@@ -474,13 +475,20 @@ export default async function SalesReportPrintPage(props: PageProps) {
                           {num(s.quantity)}
                         </td>
                         <td className="py-1.5 px-2 text-right text-slate-500 font-mono text-[11px]">
-                          {money(s.unit_cost)}
-                        </td>
-                        <td className="py-1.5 px-2 text-right text-slate-700 font-mono text-[11px] font-medium">
-                          {money(s.unit_price)}
+                          {money(s.total_cost ?? s.quantity * s.unit_cost)}
+                          {s.quantity > 1 && (
+                            <span className="block text-[9px] text-slate-400 font-sans">
+                              ({money(s.unit_cost)}/pc)
+                            </span>
+                          )}
                         </td>
                         <td className="py-1.5 px-2.5 text-right font-bold text-slate-900 print:text-black font-mono">
                           {money(s.revenue)}
+                          {s.quantity > 1 && (
+                            <span className="block text-[9px] text-slate-400 font-sans font-normal">
+                              ({money(s.unit_price)}/pc)
+                            </span>
+                          )}
                         </td>
                         <td className="py-1.5 px-2.5 text-right font-semibold text-emerald-700 print:text-black font-mono">
                           {money(s.profit)}
