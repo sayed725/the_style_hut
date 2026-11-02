@@ -34,11 +34,21 @@ export function Sidebar({ username = 'Admin' }: SidebarProps) {
   return (
     <aside className="hidden md:flex w-60 flex-col h-screen sticky top-0 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 p-4 select-none z-30">
       {/* Brand Header */}
-      <div className="flex flex-col px-3 py-3 border-b border-slate-100 dark:border-slate-800/60 mb-4">
-        <span className="font-extrabold text-lg tracking-tight text-slate-900 dark:text-white">Store Manager</span>
-        <div className="flex items-center gap-2 mt-1">
-          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-          <span className="text-xs text-slate-500 font-medium truncate">{username}</span>
+      <div className="flex items-center gap-3 px-2 py-3 border-b border-slate-100 dark:border-slate-800/60 mb-4">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/the_style_hut_logo.jpeg"
+          alt="The Style Hut"
+          className="w-10 h-10 rounded-xl object-cover shadow-xs border border-slate-200/80 dark:border-slate-700/80 shrink-0"
+        />
+        <div className="min-w-0 flex-1">
+          <span className="font-extrabold text-base tracking-tight text-slate-900 dark:text-white block truncate leading-tight">
+            The Style Hut
+          </span>
+          <div className="flex items-center gap-1.5 mt-0.5">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+            <span className="text-[11px] text-slate-500 font-medium truncate">{username}</span>
+          </div>
         </div>
       </div>
 

@@ -68,15 +68,20 @@ export default function LoginPage() {
       <Card className="w-full max-w-md shadow-xl border-slate-200/80 dark:border-slate-800">
         <form onSubmit={handleSubmit}>
           <CardHeader className="text-center pb-4">
-            <div className="mx-auto w-12 h-12 rounded-2xl bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-400 flex items-center justify-center mb-3 shadow-inner">
-              <Store className="h-6 w-6" />
+            <div className="mx-auto w-14 h-14 rounded-2xl overflow-hidden mb-3 shadow-md border border-slate-200 dark:border-slate-800">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/the_style_hut_logo.jpeg"
+                alt="The Style Hut Logo"
+                className="w-full h-full object-cover"
+              />
             </div>
             <CardTitle className="text-2xl font-extrabold tracking-tight">
-              {isSetup ? 'Create Admin Account' : 'Welcome to Store Manager'}
+              {isSetup ? 'Create Admin Account' : 'The Style Hut'}
             </CardTitle>
             <CardDescription className="text-sm">
               {isSetup
-                ? 'Set up your admin credentials to start managing your clothing store.'
+                ? 'Set up your admin credentials for The Style Hut.'
                 : 'Sign in to access your stock, sales, and profit tracking.'}
             </CardDescription>
           </CardHeader>

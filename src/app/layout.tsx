@@ -18,9 +18,14 @@ const mono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'Store Manager — Inventory & Profit Tracker',
+  title: 'The Style Hut — Inventory & Profit Tracker',
   description: 'Smart retail inventory, point of sale cashier, and profit analytics for clothing stores.',
   robots: { index: false, follow: false },
+  icons: {
+    icon: '/the_style_hut_logo.png',
+    shortcut: '/the_style_hut_logo.png',
+    apple: '/the_style_hut_logo.png',
+  },
 };
 
 export const viewport: Viewport = {
