@@ -2,8 +2,10 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 import { LayoutDashboard, ShoppingCart, Package, ReceiptText, BarChart3, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { prefetchRouteData } from '@/lib/prefetch';
 
 const navItems = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard },
@@ -16,6 +18,7 @@ const navItems = [
 
 export function MobileNav() {
   const pathname = usePathname();
+  const queryClient = useQueryClient();
 
   return (
     <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 px-2 py-1.5 pb-[max(0.375rem,env(safe-area-inset-bottom))] shadow-lg flex items-center justify-around">
@@ -26,6 +29,8 @@ export function MobileNav() {
           <Link
             key={item.href}
             href={item.href}
+            onTouchStart={() => prefetchRouteData(item.href, queryClient)}
+            onMouseEnter={() => prefetchRouteData(item.href, queryClient)}
             className={cn(
               'flex flex-col items-center justify-center flex-1 min-w-0 py-1.5 px-1 rounded-lg text-[10px] font-semibold transition-all touch-manipulation',
               isActive

@@ -7,9 +7,13 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { RestockModal } from '@/components/stock/restock-modal';
 import { money, num, pct, longDate, shortDate, profitClass, variant } from '@/lib/format';
 import { ShoppingCart, AlertCircle, ArrowUpRight } from 'lucide-react';
+
+const RestockModal = dynamic(
+  () => import('@/components/stock/restock-modal').then((mod) => mod.RestockModal),
+  { ssr: false }
+);
 
 const SalesChart = dynamic(
   () => import('@/components/dashboard/sales-chart').then((mod) => mod.SalesChart),

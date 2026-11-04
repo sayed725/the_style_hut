@@ -2,17 +2,19 @@
 
 import * as React from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import dynamic from 'next/dynamic';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogBody, DialogFooter } from '@/components/ui/dialog';
-import { ProductModal } from '@/components/stock/product-modal';
-import { RestockModal } from '@/components/stock/restock-modal';
-import { SellModal } from '@/components/sell/sell-modal';
 import { money, num } from '@/lib/format';
 import { Plus, Search, Package, Edit, Trash2, ShoppingCart, MoreVertical, AlertTriangle, ChevronLeft, ChevronRight, X, ArrowUpDown, ChevronDown } from 'lucide-react';
 import { toast } from 'sonner';
+
+const ProductModal = dynamic(() => import('@/components/stock/product-modal').then((mod) => mod.ProductModal), { ssr: false });
+const RestockModal = dynamic(() => import('@/components/stock/restock-modal').then((mod) => mod.RestockModal), { ssr: false });
+const SellModal = dynamic(() => import('@/components/sell/sell-modal').then((mod) => mod.SellModal), { ssr: false });
 
 export default function InventoryPage() {
   const queryClient = useQueryClient();

@@ -153,18 +153,25 @@ export async function GET(req: Request) {
   const totalCategories = countRes.rows[0]?.total || 0;
   const totalPages = Math.max(1, Math.ceil(totalCategories / limit));
 
-  return NextResponse.json({
-    from,
-    to,
-    group,
-    summary: withProfit(summaryRes.rows[0]),
-    series,
-    categories: categoriesRes.rows,
-    pagination: {
-      total: totalCategories,
-      totalPages,
-      page,
-      limit,
+  return NextResponse.json(
+    {
+      from,
+      to,
+      group,
+      summary: withProfit(summaryRes.rows[0]),
+      series,
+      categories: categoriesRes.rows,
+      pagination: {
+        total: totalCategories,
+        totalPages,
+        page,
+        limit,
+      },
     },
-  });
+    {
+      headers: {
+        'Cache-Control': 'private, no-cache, stale-while-revalidate=15',
+      },
+    }
+  );
 }

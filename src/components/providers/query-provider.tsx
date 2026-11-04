@@ -7,9 +7,10 @@ function makeQueryClient() {
   return new QueryClient({
     defaultOptions: {
       queries: {
-        staleTime: 30 * 1000, // 30 seconds freshness
-        gcTime: 10 * 60 * 1000, // 10 minutes cache retention
-        refetchOnWindowFocus: true,
+        staleTime: 60 * 1000, // 60 seconds data freshness
+        gcTime: 15 * 60 * 1000, // 15 minutes cache retention
+        refetchOnWindowFocus: false, // Prevents duplicate network requests on tab switch
+        refetchOnReconnect: true,
         retry: 1,
       },
     },

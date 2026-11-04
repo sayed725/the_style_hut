@@ -3,13 +3,17 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import dynamic from 'next/dynamic';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { SellModal } from '@/components/sell/sell-modal';
 import { money, num } from '@/lib/format';
 import { Search, ShoppingBag, Plus, X, ArrowUpDown, ChevronDown } from 'lucide-react';
+
+const SellModal = dynamic(() => import('@/components/sell/sell-modal').then((mod) => mod.SellModal), {
+  ssr: false,
+});
 
 export default function SellPage() {
   const queryClient = useQueryClient();

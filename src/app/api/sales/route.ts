@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getSessionUser } from '@/lib/auth';
-import { getClient, query } from '@/lib/db';
+import { getClient, query, getCachedCategories } from '@/lib/db';
 import { addDays, todayStr } from '@/lib/format';
 
 export const dynamic = 'force-dynamic';
@@ -84,35 +84,41 @@ export async function GET(req: Request) {
       AND ($6 = 'all' OR LOWER(TRIM(COALESCE(p.category, ''))) = LOWER(TRIM($6)))
     ORDER BY ${orderBy} LIMIT $7 OFFSET $8`;
 
-  const [dataRes, countRes, catRes] = await Promise.all([
+  const [dataRes, countRes, catInfo] = await Promise.all([
     query(dataSql, [from, to, search, search, methodFilter, category, limit, offset]),
     query(countSql, [from, to, search, search, methodFilter, category]),
-    query(`SELECT DISTINCT TRIM(category) AS category FROM products WHERE category IS NOT NULL AND TRIM(category) != '' ORDER BY TRIM(category) ASC`),
+    getCachedCategories(),
   ]);
 
   const total = countRes.rows[0]?.total || 0;
   const totalPages = Math.max(1, Math.ceil(total / limit));
-  const categories = catRes.rows.map((r: any) => r.category.trim());
 
-  return NextResponse.json({
-    from,
-    to,
-    rows: dataRes.rows,
-    categories,
-    total,
-    totalPages,
-    page,
-    limit,
-    summary: {
-      totalSales: total,
-      totalItems: countRes.rows[0]?.total_items || 0,
-      totalRevenue: countRes.rows[0]?.total_revenue || 0,
-      totalProfit: countRes.rows[0]?.total_profit || 0,
-      cashTotal: countRes.rows[0]?.cash_total || 0,
-      onlineTotal: countRes.rows[0]?.online_total || 0,
-      dueTotal: countRes.rows[0]?.due_total || 0,
+  return NextResponse.json(
+    {
+      from,
+      to,
+      rows: dataRes.rows,
+      categories: catInfo.categories,
+      total,
+      totalPages,
+      page,
+      limit,
+      summary: {
+        totalSales: total,
+        totalItems: countRes.rows[0]?.total_items || 0,
+        totalRevenue: countRes.rows[0]?.total_revenue || 0,
+        totalProfit: countRes.rows[0]?.total_profit || 0,
+        cashTotal: countRes.rows[0]?.cash_total || 0,
+        onlineTotal: countRes.rows[0]?.online_total || 0,
+        dueTotal: countRes.rows[0]?.due_total || 0,
+      },
     },
-  });
+    {
+      headers: {
+        'Cache-Control': 'private, no-cache, stale-while-revalidate=10',
+      },
+    }
+  );
 }
 
 export async function POST(req: Request) {

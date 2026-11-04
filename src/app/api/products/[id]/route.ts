@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getSessionUser } from '@/lib/auth';
-import { getClient, query } from '@/lib/db';
+import { getClient, query, invalidateCategoriesCache } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
 
@@ -51,6 +51,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
       client.release();
     }
 
+    invalidateCategoriesCache();
     const { rows } = await query('SELECT * FROM products WHERE id = $1', [id]);
     return NextResponse.json(rows[0]);
   } catch (error: any) {
@@ -71,6 +72,7 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
   const countSales = await query('SELECT COUNT(*)::int AS n FROM sales WHERE product_id = $1', [id]);
   if (countSales.rows[0]?.n > 0) {
     await query('UPDATE products SET active = 0 WHERE id = $1', [id]);
+    invalidateCategoriesCache();
     return NextResponse.json({ archived: true });
   }
 
@@ -86,5 +88,6 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
   } finally {
     client.release();
   }
+  invalidateCategoriesCache();
   return NextResponse.json({ deleted: true });
 }

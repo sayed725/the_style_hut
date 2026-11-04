@@ -136,20 +136,27 @@ export async function GET() {
     });
   }
 
-  return NextResponse.json({
-    today: t,
-    weekStart: ws,
-    monthStart: ms,
-    periods: {
-      today: withProfit(summaryToday),
-      week: withProfit(summaryWeek),
-      month: withProfit(summaryMonth),
-      all: withProfit(summaryAll),
+  return NextResponse.json(
+    {
+      today: t,
+      weekStart: ws,
+      monthStart: ms,
+      periods: {
+        today: withProfit(summaryToday),
+        week: withProfit(summaryWeek),
+        month: withProfit(summaryMonth),
+        all: withProfit(summaryAll),
+      },
+      series,
+      topProducts: topProducts.slice(0, 5),
+      lowStock: lowStockRes.rows,
+      inventory: inventoryRes.rows[0],
+      recent: recentRes.rows,
     },
-    series,
-    topProducts: topProducts.slice(0, 5),
-    lowStock: lowStockRes.rows,
-    inventory: inventoryRes.rows[0],
-    recent: recentRes.rows,
-  });
+    {
+      headers: {
+        'Cache-Control': 'private, no-cache, stale-while-revalidate=15',
+      },
+    }
+  );
 }

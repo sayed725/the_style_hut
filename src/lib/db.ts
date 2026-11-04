@@ -24,9 +24,9 @@ const pool =
         : process.env.DB_SSL === '1'
         ? { rejectUnauthorized: false }
         : undefined,
-    max: process.env.NODE_ENV === 'production' ? 4 : 10,
+    max: Number(process.env.DB_POOL_MAX) || (process.env.NODE_ENV === 'production' ? 12 : 10),
     idleTimeoutMillis: 30000,
-    connectionTimeoutMillis: 10000,
+    connectionTimeoutMillis: 5000,
   });
 
 if (process.env.NODE_ENV !== 'production') {
@@ -96,6 +96,7 @@ export async function initDb() {
         );
 
         CREATE INDEX IF NOT EXISTS idx_sales_date ON sales(sold_date);
+        CREATE INDEX IF NOT EXISTS idx_sales_date_id ON sales(sold_date DESC, id DESC);
         CREATE INDEX IF NOT EXISTS idx_sales_product ON sales(product_id);
         CREATE INDEX IF NOT EXISTS idx_sales_payment_method ON sales(payment_method);
         CREATE INDEX IF NOT EXISTS idx_sales_date_pay ON sales(sold_date, payment_method);
@@ -104,6 +105,20 @@ export async function initDb() {
         CREATE INDEX IF NOT EXISTS idx_products_active_cat ON products(active, category);
         CREATE INDEX IF NOT EXISTS idx_products_low_stock ON products(active, low_stock, quantity);
       `);
+
+      // Attempt to enable pg_trgm for ultra-fast ILIKE searches (if supported by DB provider)
+      try {
+        await client.query(`
+          CREATE EXTENSION IF NOT EXISTS pg_trgm;
+          CREATE INDEX IF NOT EXISTS idx_products_name_trgm ON products USING gin (name gin_trgm_ops);
+          CREATE INDEX IF NOT EXISTS idx_products_sku_trgm ON products USING gin (sku gin_trgm_ops);
+          CREATE INDEX IF NOT EXISTS idx_sales_pname_trgm ON sales USING gin (product_name gin_trgm_ops);
+        `);
+      } catch (extErr) {
+        // Safe fallback if the provider has disabled extension creation
+        console.info('pg_trgm extension not enabled or already configured:', extErr);
+      }
+
       isInitialized = true;
     } finally {
       client.release();
@@ -115,14 +130,39 @@ export async function initDb() {
 }
 
 export async function query<T = any>(text: string, params?: any[]): Promise<{ rows: T[] }> {
-  await initDb();
+  if (!isInitialized) await initDb();
   const res = await pool.query(text, params);
   return { rows: res.rows as T[] };
 }
 
 export async function getClient() {
-  await initDb();
+  if (!isInitialized) await initDb();
   return pool.connect();
+}
+
+let cachedCategories: { categories: string[]; count: number; pieces: number; expiresAt: number } | null = null;
+
+export async function getCachedCategories() {
+  const now = Date.now();
+  if (cachedCategories && cachedCategories.expiresAt > now) {
+    return cachedCategories;
+  }
+  if (!isInitialized) await initDb();
+  const [catRes, overallRes] = await Promise.all([
+    pool.query(`SELECT DISTINCT TRIM(category) AS category FROM products WHERE active = 1 AND category IS NOT NULL AND TRIM(category) != '' ORDER BY category ASC`),
+    pool.query(`SELECT COUNT(DISTINCT TRIM(category))::int AS overall_categories, COALESCE(SUM(quantity)::int, 0) AS overall_pieces FROM products WHERE active = 1`),
+  ]);
+  cachedCategories = {
+    categories: catRes.rows.map((r: any) => String(r.category).trim()),
+    count: overallRes.rows[0]?.overall_categories || 0,
+    pieces: overallRes.rows[0]?.overall_pieces || 0,
+    expiresAt: now + 45000, // 45 seconds cache TTL
+  };
+  return cachedCategories;
+}
+
+export function invalidateCategoriesCache() {
+  cachedCategories = null;
 }
 
 export { pool };

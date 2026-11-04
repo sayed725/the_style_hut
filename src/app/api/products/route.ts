@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getSessionUser } from '@/lib/auth';
-import { getClient, query } from '@/lib/db';
+import { getClient, query, getCachedCategories, invalidateCategoriesCache } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
 
@@ -70,29 +70,34 @@ export async function GET(req: Request) {
     dataParams.push(limit, offset);
   }
 
-  const [countRes, dataRes, categoriesRes, overallRes] = await Promise.all([
+  const [countRes, dataRes, categoryInfo] = await Promise.all([
     query(countSql, countParams),
     query(dataSql, dataParams),
-    query(`SELECT DISTINCT TRIM(category) AS category FROM products WHERE active = 1 AND category IS NOT NULL AND TRIM(category) != '' ORDER BY category ASC`),
-    query(`SELECT COUNT(DISTINCT TRIM(category))::int AS overall_categories, COALESCE(SUM(quantity)::int, 0) AS overall_pieces FROM products WHERE active = 1`),
+    getCachedCategories(),
   ]);
 
   const total = countRes.rows[0]?.total || 0;
   const totalPieces = countRes.rows[0]?.total_pieces || 0;
   const totalPages = Math.max(1, Math.ceil(total / limit));
-  const categories = categoriesRes.rows.map((r: any) => r.category.trim());
 
-  return NextResponse.json({
-    products: dataRes.rows,
-    categories,
-    total,
-    totalPieces,
-    overallCategoriesCount: overallRes.rows[0]?.overall_categories || 0,
-    overallTotalPieces: overallRes.rows[0]?.overall_pieces || 0,
-    page,
-    totalPages,
-    limit,
-  });
+  return NextResponse.json(
+    {
+      products: dataRes.rows,
+      categories: categoryInfo.categories,
+      total,
+      totalPieces,
+      overallCategoriesCount: categoryInfo.count,
+      overallTotalPieces: categoryInfo.pieces,
+      page,
+      totalPages,
+      limit,
+    },
+    {
+      headers: {
+        'Cache-Control': 'private, no-cache, stale-while-revalidate=10',
+      },
+    }
+  );
 }
 
 export async function POST(req: Request) {
@@ -139,6 +144,7 @@ export async function POST(req: Request) {
       client.release();
     }
 
+    invalidateCategoriesCache();
     const { rows } = await query('SELECT * FROM products WHERE id = $1', [newId]);
     return NextResponse.json(rows[0], { status: 201 });
   } catch (error: any) {

@@ -2,9 +2,11 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 import { LayoutDashboard, ShoppingCart, Package, ReceiptText, BarChart3, Settings, LogOut } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { prefetchRouteData } from '@/lib/prefetch';
 
 interface SidebarProps {
   username?: string;
@@ -22,6 +24,7 @@ const navItems = [
 export function Sidebar({ username = 'Admin' }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
+  const queryClient = useQueryClient();
 
   const handleLogout = async () => {
     try {
@@ -61,6 +64,8 @@ export function Sidebar({ username = 'Admin' }: SidebarProps) {
             <Link
               key={item.href}
               href={item.href}
+              onMouseEnter={() => prefetchRouteData(item.href, queryClient)}
+              onFocus={() => prefetchRouteData(item.href, queryClient)}
               className={cn(
                 'flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-medium transition-colors',
                 isActive
